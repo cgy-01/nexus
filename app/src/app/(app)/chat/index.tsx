@@ -20,7 +20,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, type Href } from 'expo-router';
+import { router, useNavigation, type Href } from 'expo-router';
 import Markdown from 'react-native-markdown-display';
 
 import { useChatStore } from '@/stores/chat.store';
@@ -172,18 +172,43 @@ export default function ChatMainScreen() {
   const openSidebar = useSidebarStore((s) => s.open);
 
   /* ── 键盘 ── */
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
+  const navigation = useNavigation();
+  const keyboardAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (e) => {
-      Animated.timing(keyboardHeight, { toValue: e.endCoordinates.height, duration: e.duration || 250, useNativeDriver: true }).start();
+      navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
+      // 减去底栏高度 + 留一点呼吸空间（~8px）
+      const offset = Math.max(0, e.endCoordinates.height - 42);
+      Animated.timing(keyboardAnim, {
+        toValue: offset,
+        duration: e.duration || 250,
+        useNativeDriver: true,
+      }).start();
     });
     const hideSub = Keyboard.addListener(hideEvent, (e) => {
-      Animated.timing(keyboardHeight, { toValue: 0, duration: e.duration || 250, useNativeDriver: true }).start();
+      navigation.getParent()?.setOptions({
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          borderTopColor: 'transparent',
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowOffset: { width: 0, height: 0 },
+          shadowRadius: 0,
+          paddingTop: 4,
+          display: 'flex',
+        },
+      });
+      Animated.timing(keyboardAnim, {
+        toValue: 0,
+        duration: e.duration || 250,
+        useNativeDriver: true,
+      }).start();
     });
     return () => { showSub.remove(); hideSub.remove(); };
-  }, [keyboardHeight]);
+  }, [keyboardAnim, navigation]);
 
   /* ── 合并消息用于渲染 ── */
   const displayMessages = [
@@ -281,30 +306,26 @@ export default function ChatMainScreen() {
 
       {/* Input Bar */}
       <Animated.View
-        style={[styles.inputBarWrapper, { transform: [{ translateY: Animated.multiply(keyboardHeight, -1) }] }]}
+        style={[styles.inputBar, { transform: [{ translateY: Animated.multiply(keyboardAnim, -1) }] }]}
       >
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="问问 DeepSeek"
-            placeholderTextColor="rgba(0,0,0,0.55)"
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            textAlignVertical="top"
-          />
-          <View style={styles.inputActions}>
-            <Pressable style={{ transform: [{ translateY: -16 }] }}>
-              <ModelIcon color={iconColor} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.sendButton, { transform: [{ translateY: -16 }] }, pressed && styles.sendPressed]}
-              onPress={hasInput ? handleSend : undefined}
-            >
-              {hasInput ? <SendIcon /> : <MicIcon />}
-            </Pressable>
-          </View>
-        </View>
+        <Pressable style={styles.modelButton}>
+          <ModelIcon color={iconColor} />
+        </Pressable>
+        <TextInput
+          style={styles.textInput}
+          placeholder="问问 DeepSeek"
+          placeholderTextColor="rgba(0,0,0,0.55)"
+          value={inputText}
+          onChangeText={setInputText}
+          multiline
+          textAlignVertical="center"
+        />
+        <Pressable
+          style={({ pressed }) => [styles.sendButton, pressed && styles.sendPressed]}
+          onPress={hasInput ? handleSend : undefined}
+        >
+          {hasInput ? <SendIcon /> : <MicIcon />}
+        </Pressable>
       </Animated.View>
     </SafeAreaView>
   );
@@ -323,7 +344,7 @@ export default function ChatMainScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#ffffff' },
   frame: {
-    flex: 1, overflow: 'hidden', backgroundColor: '#ffffff',
+    flex: 1, backgroundColor: '#ffffff',
   },
   safeArea: { flex: 1, paddingHorizontal: Spacing.four },
 
@@ -361,7 +382,7 @@ const styles = StyleSheet.create({
 
   /* Chat */
   chatArea: { flex: 1 },
-  chatContent: { paddingTop: 20, paddingBottom: 75 },
+  chatContent: { paddingTop: 20, paddingBottom: 80 },
   llmMessage: { paddingHorizontal: 5, marginBottom: 24 },
 
   /* Error */
@@ -369,24 +390,25 @@ const styles = StyleSheet.create({
   errorText: { color: '#856404', fontSize: 13, fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }) },
 
   /* Input Bar */
-  inputBarWrapper: {
-    position: 'absolute', bottom: -34, left: 0, right: 0,
-    shadowColor: '#000000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.25, shadowRadius: 30,
-    ...Platform.select({ android: { elevation: 16 }, default: { boxShadow: '0px -4px 30px 6px rgba(0,0,0,0.25)' } }),
-  },
   inputBar: {
-    backgroundColor: '#ffffff', borderTopLeftRadius: 30, borderTopRightRadius: 30,
-    borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: 'rgba(0,0,0,0.1)',
-    paddingHorizontal: Spacing.four, paddingTop: Spacing.four, paddingBottom: Spacing.five + Spacing.two, gap: Spacing.three,
+    position: 'absolute', bottom: 0, left: '5%', right: '5%',
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#ffffff', borderRadius: 30,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: Spacing.three, paddingVertical: Spacing.two,
+  },
+  modelButton: {
+    width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
+    marginRight: Spacing.two,
   },
   textInput: {
-    fontSize: 19, lineHeight: 27, color: '#000000', paddingVertical: Spacing.two,
-    marginTop: -15, marginLeft: -2, marginRight: 20,
+    flex: 1,
+    fontSize: 17, lineHeight: 24, color: '#000000',
+    paddingVertical: Spacing.one, paddingHorizontal: Spacing.one,
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
-    minHeight: 43, maxHeight: 124,
+    maxHeight: 120,
   },
-  inputActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Spacing.one },
-  sendButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  sendButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', marginLeft: Spacing.two },
   sendPressed: { opacity: 0.7 },
 });
 

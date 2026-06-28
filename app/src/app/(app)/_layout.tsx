@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { useChatStore } from '@/stores/chat.store';
 import SidebarDrawer from '@/components/sidebar-drawer';
+import { ChatTabIcon, NotesTabIcon, UserTabIcon } from '@/components/icons';
 import type { Session } from '@/types/chat';
 
 /** 调试开关：true = 跳过登录校验，直接进入主应用 */
@@ -20,12 +21,6 @@ const DEBUG_SKIP_AUTH = false;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SIDEBAR_WIDTH = SCREEN_WIDTH * 0.8;
-
-const TAB_ICONS: Record<string, string> = {
-  chat: '💬',
-  documents: '📒',
-  profile: '👤',
-};
 
 function TabButton(props: any) {
   return (
@@ -139,32 +134,36 @@ export default function AppLayout() {
           name="chat"
           options={{
             title: '聊天',
-            tabBarIcon: ({ focused }) => (
-              <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.5 }}>
-                {TAB_ICONS.chat}
-              </Text>
+            tabBarIcon: ({ focused, color }) => (
+              <ChatTabIcon size={focused ? 22 : 20} color={color} />
             ),
+            tabBarStyle: {
+              backgroundColor: '#ffffff',
+              borderTopWidth: 0,
+              borderTopColor: 'transparent',
+              elevation: 0,
+              shadowOpacity: 0,
+              shadowOffset: { width: 0, height: 0 },
+              shadowRadius: 0,
+              paddingTop: 4,
+            },
           }}
         />
         <Tabs.Screen
           name="documents"
           options={{
             title: '笔记',
-            tabBarIcon: ({ focused }) => (
-              <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.5 }}>
-                {TAB_ICONS.documents}
-              </Text>
+            tabBarIcon: ({ focused, color }) => (
+              <NotesTabIcon size={focused ? 22 : 20} color={color} />
             ),
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
-            title: '用户',
-            tabBarIcon: ({ focused }) => (
-              <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.5 }}>
-                {TAB_ICONS.profile}
-              </Text>
+            title: '我的',
+            tabBarIcon: ({ focused, color }) => (
+              <UserTabIcon size={focused ? 22 : 20} color={color} />
             ),
           }}
         />

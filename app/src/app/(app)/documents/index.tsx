@@ -59,6 +59,72 @@ function formatDate(isoStr: string): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
+/* ── 内联 Markdown 渲染（卡片预览用） ── */
+function renderInlineMarkdown(text: string, baseStyle: any) {
+  const tokens: Array<{ type: 'text' | 'bold' | 'italic' | 'code'; content: string }> = [];
+  let i = 0;
+  let buf = '';
+
+  while (i < text.length) {
+    // **bold**
+    if (text[i] === '*' && text[i + 1] === '*') {
+      const end = text.indexOf('**', i + 2);
+      if (end !== -1) {
+        if (buf) { tokens.push({ type: 'text', content: buf }); buf = ''; }
+        tokens.push({ type: 'bold', content: text.slice(i + 2, end) });
+        i = end + 2;
+        continue;
+      }
+    }
+    // *italic* (single asterisk, not double)
+    if (text[i] === '*' && text[i + 1] !== '*') {
+      const end = text.indexOf('*', i + 1);
+      if (end !== -1) {
+        if (buf) { tokens.push({ type: 'text', content: buf }); buf = ''; }
+        tokens.push({ type: 'italic', content: text.slice(i + 1, end) });
+        i = end + 1;
+        continue;
+      }
+    }
+    // `inline code`
+    if (text[i] === '`') {
+      const end = text.indexOf('`', i + 1);
+      if (end !== -1) {
+        if (buf) { tokens.push({ type: 'text', content: buf }); buf = ''; }
+        tokens.push({ type: 'code', content: text.slice(i + 1, end) });
+        i = end + 1;
+        continue;
+      }
+    }
+    buf += text[i];
+    i++;
+  }
+  if (buf) tokens.push({ type: 'text', content: buf });
+
+  if (tokens.length === 0) return <Text style={baseStyle} numberOfLines={2}>{text}</Text>;
+
+  return (
+    <Text style={baseStyle} numberOfLines={2}>
+      {tokens.map((t, idx) => {
+        switch (t.type) {
+          case 'bold':
+            return <Text key={idx} style={{ fontWeight: '700' }}>{t.content}</Text>;
+          case 'italic':
+            return <Text key={idx} style={{ fontStyle: 'italic' }}>{t.content}</Text>;
+          case 'code':
+            return (
+              <Text key={idx} style={{ fontFamily: fontFamily, backgroundColor: '#f0f0f0', borderRadius: 4, paddingHorizontal: 3, fontSize: 13 }}>
+                {t.content}
+              </Text>
+            );
+          default:
+            return <Text key={idx}>{t.content}</Text>;
+        }
+      })}
+    </Text>
+  );
+}
+
 /* ── 单个笔记卡片 ── */
 function NoteCard({
   note, onPress, onLongPress, isSelectionMode, isSelected, onToggleSelect,
@@ -127,9 +193,7 @@ function NoteCard({
       </View>
 
       {/* 预览文本 */}
-      <Text style={[styles.cardPreview, isGenerating && styles.cardPreviewGenerating]} numberOfLines={2}>
-        {note.preview}
-      </Text>
+      {renderInlineMarkdown(note.preview, [styles.cardPreview, isGenerating && styles.cardPreviewGenerating])}
 
       {/* 底部行 */}
       <View style={styles.cardFooter}>

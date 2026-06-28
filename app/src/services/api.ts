@@ -10,7 +10,8 @@
 import axios from 'axios';
 import { tokenStore } from '@/services/token';
 
-const BASE_URL = 'http://192.168.0.108:8001/api/v1';
+// 生产环境：改为你的服务器地址；开发时可用 .env 覆盖
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://your-server-ip:8001/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
