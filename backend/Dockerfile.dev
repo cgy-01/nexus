@@ -1,0 +1,22 @@
+# =============================================================================
+# Development Docker image with hot-reload
+# =============================================================================
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install uv via pip (avoids ghcr.io pull issues)
+RUN pip install --no-cache-dir uv
+
+# Copy dependency manifests
+COPY pyproject.toml uv.lock ./
+
+# Install with dev dependencies
+RUN uv sync
+
+# Pre-create the venv path
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Start with auto-reload; source is mounted as a volume
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

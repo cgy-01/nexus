@@ -1,0 +1,71 @@
+# =============================================================================
+# Nexus AI — 统一 .gitignore（前后端 monorepo）
+# =============================================================================
+
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.venv/
+venv/
+.pnpm-store/
+
+# ─── Environment & Secrets ──────────────────────────────────────────────────
+.env
+.env.local
+.env*.local
+*.pem
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# ─── Expo / React Native ─────────────────────────────────────────────────────
+.expo/
+dist/
+web-build/
+.metro-health-check*
+*.tsbuildinfo
+.kotlin/
+*.orig.*
+
+# Generated native folders
+app/ios/
+app/android/
+
+# ─── Build artifacts ─────────────────────────────────────────────────────────
+build/
+*.whl
+
+# ─── Databases & Data ────────────────────────────────────────────────────────
+*.db
+*.sqlite3
+data/
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── IDE & Editor ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Debug ───────────────────────────────────────────────────────────────────
+npm-debug.*
+yarn-debug.*
+yarn-error.*

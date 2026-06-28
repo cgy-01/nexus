@@ -1,0 +1,81 @@
+# 新建对话按钮
+<svg width="23" height="23" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M10.25 3.37132H3.25C2.71957 3.37132 2.21086 3.58203 1.83579 3.95711C1.46071 4.33218 1.25 4.84089 1.25 5.37132V19.3713C1.25 19.9018 1.46071 20.4105 1.83579 20.7855C2.21086 21.1606 2.71957 21.3713 3.25 21.3713H17.25C17.7804 21.3713 18.2891 21.1606 18.6642 20.7855C19.0393 20.4105 19.25 19.9018 19.25 19.3713V12.3713M17.75 1.87132C18.1478 1.4735 18.6874 1.25 19.25 1.25C19.8126 1.25 20.3522 1.4735 20.75 1.87132C21.1478 2.26915 21.3713 2.80871 21.3713 3.37132C21.3713 3.93393 21.1478 4.4735 20.75 4.87132L11.25 14.3713L7.25 15.3713L8.25 11.3713L17.75 1.87132Z" stroke="#1E1E1E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+# 三横线菜单按钮
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M21 12H3M21 18H3M21 6H3" stroke="#1E1E1E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+# Avatar头像显示
+<svg width="35" height="35" viewBox="0 0 35 35" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g clip-path="url(#clip0_23_851)">
+<rect x="-2" y="-2" width="40" height="40" fill="url(#pattern0_23_851)"/>
+</g>
+<defs>
+<pattern id="pattern0_23_851" patternContentUnits="objectBoundingBox" width="1" height="1">
+<use xlink:href="#image0_23_851" transform="scale(0.00195312)"/>
+</pattern>
+<clipPath id="clip0_23_851">
+<path d="M0 17.5C0 7.83502 7.83502 0 17.5 0V0C27.165 0 35 7.83502 35 17.5V17.5C35 27.165 27.165 35 17.5 35V35C7.83502 35 0 27.165 0 17.5V17.5Z" fill="white"/>
+</clipPath>
+<image id="image0_23_851" width="512" height="512" preserveAspectRatio="none" xlink:href="xxxxxxxx"/>
+</defs>
+</svg>
+
+
+# 麦克风
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="19" cy="19" r="19" fill="white"/>
+<circle cx="19" cy="19" r="18.5" stroke="black" stroke-opacity="0.12"/>
+<g clip-path="url(#clip0_23_820)">
+<path d="M19.5 9.79169C18.8701 9.79169 18.266 10.0419 17.8206 10.4873C17.3752 10.9327 17.125 11.5368 17.125 12.1667V18.5C17.125 19.1299 17.3752 19.734 17.8206 20.1794C18.266 20.6248 18.8701 20.875 19.5 20.875C20.1299 20.875 20.734 20.6248 21.1794 20.1794C21.6248 19.734 21.875 19.1299 21.875 18.5V12.1667C21.875 11.5368 21.6248 10.9327 21.1794 10.4873C20.734 10.0419 20.1299 9.79169 19.5 9.79169Z" fill="#444746" stroke="#444746" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M25.0416 16.9167V18.5C25.0416 19.9698 24.4578 21.3793 23.4185 22.4186C22.3793 23.4578 20.9697 24.0417 19.5 24.0417C18.0302 24.0417 16.6207 23.4578 15.5814 22.4186C14.5422 21.3793 13.9583 19.9698 13.9583 18.5V16.9167" stroke="#444746" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M19.5 24.0417V27.2084" stroke="#444746" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16.3333 27.2083H22.6666" stroke="#444746" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_23_820">
+<rect width="19" height="19" fill="white" transform="translate(10 9)"/>
+</clipPath>
+</defs>
+</svg>
+
+# 发送按钮
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="19" cy="19" r="18.5" fill="#0066FF" stroke="#0066FF"/>
+<path d="M19 24.6842V11.4211M25.0789 18.0527L19 11.4211L12.921 18.0527" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M19 23.5789V28.0344" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
+
+
+# 模型选择按钮
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M6.66667 5H17.5M6.66667 10H17.5M6.66667 15H17.5M2.5 5H2.50833M2.5 10H2.50833M2.5 15H2.50833" stroke="#1E1E1E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+# 聊天模式页面右上角
+<svg width="88" height="42" viewBox="0 0 88 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="88" height="42" rx="21" fill="white"/>
+<rect x="0.5" y="0.5" width="87" height="41" rx="20.5" stroke="black" stroke-opacity="0.2"/>
+<path d="M67 22C67.5523 22 68 21.5523 68 21C68 20.4477 67.5523 20 67 20C66.4477 20 66 20.4477 66 21C66 21.5523 66.4477 22 67 22Z" fill="#1E1E1E"/>
+<path d="M67 15C67.5523 15 68 14.5523 68 14C68 13.4477 67.5523 13 67 13C66.4477 13 66 13.4477 66 14C66 14.5523 66.4477 15 67 15Z" fill="#1E1E1E"/>
+<path d="M67 29C67.5523 29 68 28.5523 68 28C68 27.4477 67.5523 27 67 27C66.4477 27 66 27.4477 66 28C66 28.5523 66.4477 29 67 29Z" fill="#1E1E1E"/>
+<path d="M67 22C67.5523 22 68 21.5523 68 21C68 20.4477 67.5523 20 67 20C66.4477 20 66 20.4477 66 21C66 21.5523 66.4477 22 67 22Z" stroke="#1E1E1E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M67 15C67.5523 15 68 14.5523 68 14C68 13.4477 67.5523 13 67 13C66.4477 13 66 13.4477 66 14C66 14.5523 66.4477 15 67 15Z" stroke="#1E1E1E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M67 29C67.5523 29 68 28.5523 68 28C68 27.4477 67.5523 27 67 27C66.4477 27 66 27.4477 66 28C66 28.5523 66.4477 29 67 29Z" stroke="#1E1E1E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<g clip-path="url(#clip0_1_2273)">
+<path d="M25 13H18C17.4696 13 16.9609 13.2107 16.5858 13.5858C16.2107 13.9609 16 14.4696 16 15V29C16 29.5304 16.2107 30.0391 16.5858 30.4142C16.9609 30.7893 17.4696 31 18 31H32C32.5304 31 33.0391 30.7893 33.4142 30.4142C33.7893 30.0391 34 29.5304 34 29V22M32.5 11.5C32.8978 11.1022 33.4374 10.8787 34 10.8787C34.5626 10.8787 35.1022 11.1022 35.5 11.5C35.8978 11.8978 36.1213 12.4374 36.1213 13C36.1213 13.5626 35.8978 14.1022 35.5 14.5L26 24L22 25L23 21L32.5 11.5Z" stroke="#1E1E1E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_1_2273">
+<rect width="24" height="24" fill="white" transform="translate(14 9)"/>
+</clipPath>
+</defs>
+</svg>
+
+# 发送聊天气泡
+<svg width="169" height="57" viewBox="0 0 169 57" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="169" height="57" rx="28.5" fill="black" fill-opacity="0.06"/>
+</svg>

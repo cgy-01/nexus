@@ -1,0 +1,71 @@
+{
+  "sections": [
+    {
+      "heading": "今天",
+      "items": [
+        {
+          "id": "conv-001",
+          "title": "对话学习的原理",
+          "keywords": ["交互式学习", "认知模型", "即时反馈"],
+          "messageCount": 2,
+          "updatedAt": "2026-06-13T10:30:00Z"
+        }
+      ]
+    },
+    {
+      "heading": "昨天",
+      "items": [
+        {
+          "id": "conv-002",
+          "title": "图标适配方案",
+          "keywords": ["PNG", "SVG", "矢量图", "分辨率"],
+          "messageCount": 5,
+          "updatedAt": "2026-06-12T14:20:00Z"
+        },
+        {
+          "id": "conv-003",
+          "title": "项目架构讨论",
+          "keywords": ["Expo Router", "组件拆分", "状态管理"],
+          "messageCount": 3,
+          "updatedAt": "2026-06-12T09:15:00Z"
+        }
+      ]
+    },
+    {
+      "heading": "七天内",
+      "items": [
+        {
+          "id": "conv-004",
+          "title": "Expo SDK 升级",
+          "keywords": ["版本迁移", "兼容性", "新特性"],
+          "messageCount": 8,
+          "updatedAt": "2026-06-10T16:45:00Z"
+        }
+      ]
+    },
+    {
+      "heading": "30天内",
+      "items": [
+        {
+          "id": "conv-005",
+          "title": "需求评审记录",
+          "keywords": ["用户故事", "功能优先级", "MVP"],
+          "messageCount": 12,
+          "updatedAt": "2026-05-20T11:00:00Z"
+        }
+      ]
+    },
+    {
+      "heading": "更久",
+      "items": [
+        {
+          "id": "conv-006",
+          "title": "项目初始化",
+          "keywords": ["技术选型", "脚手架", "环境配置"],
+          "messageCount": 20,
+          "updatedAt": "2026-05-01T08:00:00Z"
+        }
+      ]
+    }
+  ]
+}

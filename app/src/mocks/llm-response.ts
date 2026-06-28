@@ -1,0 +1,22 @@
+export const mockLLMResponse = {
+  id: 'chatcmpl-abc123def456',
+  object: 'chat.completion',
+  created: 1712345678,
+  model: 'gpt-4-turbo',
+  choices: [
+    {
+      index: 0,
+      message: {
+        role: 'assistant',
+        content:
+          '在正常的 App 开发中，图标的加入方式主要有两种：\n\n1. **使用位图（如 PNG）**：开发者下载或设计 PNG 格式的图标，然后根据不同的屏幕分辨率（如 Android 的 mdpi/hdpi/xhdpi/xxhdpi 或 iOS 的 @1x/@2x/@3x）分别放置对应尺寸的图片。App 运行时会根据设备屏幕密度自动加载最合适的资源。这是最常见的方式。\n\n2. **使用矢量图形或代码绘制**：\n   - 矢量格式（如 SVG、Android Vector Drawable、iOS 的 PDF 资源）可以无损缩放，避免多分辨率适配问题。\n   - 完全用代码绘制（如 Canvas、自定义 View）适用于动态变化或极简的图标，但开发成本较高。\n\n关于"不同分辨率下 PNG 会显示异常"：**这个说法基本正确**。如果只提供单一分辨率的 PNG，在高分辨率屏幕上会被拉伸放大，导致模糊、锯齿或边缘粗糙；在低分辨率屏幕上可能因缩小而丢失细节。正确的做法是提供多套切图（如 Android 的 `drawable-*dpi` 或 iOS 的 `Images.xcassets`），让系统自动匹配。因此，为适配不同分辨率，通常需要导出多个 PNG 版本，或者直接使用矢量图避免此问题。',
+      },
+      finish_reason: 'stop',
+    },
+  ],
+  usage: {
+    prompt_tokens: 72,
+    completion_tokens: 248,
+    total_tokens: 320,
+  },
+};
