@@ -1,19 +1,21 @@
 import { Animated, StyleSheet } from 'react-native';
 
-import SidebarPanel, { type MenuSectionData } from '@/components/sidebar';
+import SidebarPanel from '@/components/sidebar';
+import type { Session } from '@/types/chat';
 
 interface SidebarDrawerProps {
-  /** Shared animated value: 0 = closed, 1 = open */
   animValue: Animated.Value;
-  /** Drawer width in px */
   width: number;
-  /** Sidebar menu sections */
-  sections: MenuSectionData[];
-  /** Callback when a session is tapped */
+  sessions: Session[];
   onSessionPress?: (sessionId: string) => void;
 }
 
-export default function SidebarDrawer({ animValue, width, sections, onSessionPress }: SidebarDrawerProps) {
+export default function SidebarDrawer({
+  animValue,
+  width,
+  sessions,
+  onSessionPress,
+}: SidebarDrawerProps) {
   const translateX = animValue.interpolate({
     inputRange: [0, 1],
     outputRange: [-width, 0],
@@ -21,12 +23,13 @@ export default function SidebarDrawer({ animValue, width, sections, onSessionPre
 
   return (
     <Animated.View
-      style={[
-        styles.container,
-        { width, transform: [{ translateX }] },
-      ]}
+      style={[styles.container, { width, transform: [{ translateX }] }]}
     >
-      <SidebarPanel width={width} sections={sections} onSessionPress={onSessionPress} />
+      <SidebarPanel
+        width={width}
+        sessions={sessions}
+        onSessionPress={onSessionPress}
+      />
     </Animated.View>
   );
 }

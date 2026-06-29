@@ -1,7 +1,7 @@
 /**
  * 个人中心页
  *
- * 显示用户信息 + 退出登录
+ * 展示用户头像 + 昵称 + 退出登录
  */
 
 import { StyleSheet, View, Text, Pressable, Platform, Alert } from 'react-native';
@@ -28,29 +28,33 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const displayName = user?.display_name ?? '未设置名称';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>个人中心</Text>
-      </View>
-
-      <View style={styles.card}>
+      {/* User card — flat, no background */}
+      <Pressable
+        style={styles.userRow}
+        onPress={() => router.navigate('/(app)/profile/detail' as Href)}
+      >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {(user?.display_name ?? user?.email ?? '?')[0].toUpperCase()}
+            {(displayName[0] ?? '?').toUpperCase()}
           </Text>
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.displayName}>
-            {user?.display_name ?? '未设置名称'}
-          </Text>
-          <Text style={styles.email}>{user?.email}</Text>
+        <View style={styles.nameCol}>
+          <Text style={styles.displayName}>{displayName}</Text>
         </View>
-      </View>
+        <Text style={styles.chevron}>{'›'}</Text>
+      </Pressable>
 
+      {/* Logout */}
       <View style={styles.section}>
         <Pressable
-          style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.logoutButtonPressed,
+          ]}
           onPress={handleLogout}
         >
           <Text style={styles.logoutText}>退出登录</Text>
@@ -65,41 +69,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  header: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.three,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#000000',
-    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
-  },
-  card: {
+  /* User row */
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.four,
-    padding: Spacing.three,
-    backgroundColor: '#F8F8FA',
-    borderRadius: 16,
-    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    gap: 12,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#000000',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: '#ffffff',
     fontSize: 22,
     fontWeight: '600',
+    color: '#000000',
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
   },
-  userInfo: {
+  nameCol: {
     flex: 1,
   },
   displayName: {
@@ -108,15 +100,14 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
   },
-  email: {
-    fontSize: 14,
-    color: '#60646C',
-    marginTop: 2,
-    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  chevron: {
+    fontSize: 22,
+    color: '#9CA3AF',
   },
+  /* Logout */
   section: {
-    marginTop: Spacing.five,
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.five,
   },
   logoutButton: {
     backgroundColor: '#FFF0F0',

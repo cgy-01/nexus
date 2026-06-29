@@ -14,7 +14,6 @@ import { useSidebarStore } from '@/stores/sidebar.store';
 import { useChatStore } from '@/stores/chat.store';
 import SidebarDrawer from '@/components/sidebar-drawer';
 import { ChatTabIcon, NotesTabIcon, UserTabIcon } from '@/components/icons';
-import type { Session } from '@/types/chat';
 
 /** 调试开关：true = 跳过登录校验，直接进入主应用 */
 const DEBUG_SKIP_AUTH = false;
@@ -30,34 +29,6 @@ function TabButton(props: any) {
       style={({ pressed }) => [props.style]}
     />
   );
-}
-
-/* ── 按时间分组（侧边栏数据） ── */
-function groupSessions(sessions: Session[]) {
-  const now = new Date();
-  const groups: Record<string, Session[]> = { '今天': [], '昨天': [], '七天内': [], '30天内': [], '更久': [] };
-
-  for (const s of sessions) {
-    const d = new Date(s.updated_at);
-    const diff = now.getTime() - d.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) groups['今天'].push(s);
-    else if (days === 1) groups['昨天'].push(s);
-    else if (days < 7) groups['七天内'].push(s);
-    else if (days < 30) groups['30天内'].push(s);
-    else groups['更久'].push(s);
-  }
-
-  return Object.entries(groups)
-    .filter(([, items]) => items.length > 0)
-    .map(([heading, items]) => ({
-      heading,
-      items: items.map((s) => ({
-        id: s.id,
-        label: s.title,
-        description: `${s.model} · ${s.total_tokens} tokens`,
-      })),
-    }));
 }
 
 export default function AppLayout() {
@@ -90,7 +61,6 @@ export default function AppLayout() {
   }, [isSidebarOpen, sidebarAnim]);
 
   const overlayOpacity = sidebarAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
-  const sidebarSections = groupSessions(sessions);
 
   const handleSessionPress = useCallback((sessionId: string) => {
     closeSidebar();
@@ -166,6 +136,12 @@ export default function AppLayout() {
               <UserTabIcon size={focused ? 22 : 20} color={color} />
             ),
           }}
+          listeners={{
+            tabPress: () => {
+              // 切到"我的"时始终回到首页，不残留 detail 页面
+              router.replace('/(app)/profile' as Href);
+            },
+          }}
         />
       </Tabs>
 
@@ -182,7 +158,7 @@ export default function AppLayout() {
         <SidebarDrawer
           animValue={sidebarAnim}
           width={SIDEBAR_WIDTH}
-          sections={sidebarSections}
+          sessions={sessions}
           onSessionPress={handleSessionPress}
         />
       )}
