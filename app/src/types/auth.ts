@@ -23,6 +23,9 @@ export interface User {
   display_name: string;
   avatar_url: string | null;
   created_at: string;
+  uid?: string | null;
+  phone?: string | null;
+  wechat?: string | null;
 }
 
 export interface AuthResponse {

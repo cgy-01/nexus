@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Platform, ScrollView, Pressable } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { Spacing } from '@/constants/theme';
+import { userService, type StatsData, type ActivityData } from '@/services/user.service';
 
 /* ── Chevron icon ── */
 function ChevronRight() {
@@ -62,43 +64,49 @@ const NUM_COLS = 14;
 const NUM_ROWS = 7;
 const MONTH_MARKS: Record<number, string> = { 1: '4月', 5: '5月', 9: '6月', 13: '7月' };
 
-function HeatmapGrid({ containerWidth }: { containerWidth: number }) {
+function HeatmapGrid({
+  containerWidth,
+  activity,
+}: {
+  containerWidth: number;
+  activity: number[][] | null;
+}) {
   const GAP = 4;
-  // 跟 sectionTitle 一样的左右 padding：Spacing.three = 16
   const PAD = 16;
   const contentWidth = containerWidth - PAD * 2;
-  const cellSize = Math.floor((contentWidth - (NUM_COLS - 1) * GAP) / NUM_COLS);
+  const cols = activity?.[0]?.length ?? NUM_COLS;
+  const cellSize = Math.floor((contentWidth - (cols - 1) * GAP) / cols);
 
-  const cells: string[][] = [];
-  for (let row = 0; row < NUM_ROWS; row++) {
-    const rowCells: string[] = [];
-    for (let col = 0; col < NUM_COLS; col++) {
-      const recency = (col + 1) / NUM_COLS;
-      const seed = (row * NUM_COLS + col) * 3 + Math.floor(recency * 20);
-      let intensity = 0;
-      if (seed % 17 < 4) intensity = 1;
-      else if (seed % 17 < 8) intensity = 2;
-      else if (seed % 17 < 12 && recency > 0.5) intensity = 3;
-      else if (seed % 17 >= 12 && recency > 0.3) intensity = 4;
-      rowCells.push(HEAT_COLORS[intensity]);
-    }
-    cells.push(rowCells);
+  /* Map learning-loop score → heat color */
+  function colorFor(score: number): string {
+    if (score < 0) return HEAT_COLORS[0]; // future
+    if (score === 0) return HEAT_COLORS[0];       // 什么都没干
+    if (score <= 1) return HEAT_COLORS[1];        // 聊了天，没整理
+    if (score <= 3) return HEAT_COLORS[2];        // 有一定产出
+    if (score <= 6) return HEAT_COLORS[3];        // 良好产出
+    return HEAT_COLORS[4];                         // 学习闭环达成
   }
+
+  // 无数据时显示全灰，不做 mock
+  const rows = activity && activity.length > 0
+    ? activity
+    : Array.from({ length: NUM_ROWS }, () => Array(NUM_COLS).fill(0));
+  const displayRows = rows;
 
   return (
     <View style={[heatmapStyles.grid, { paddingHorizontal: PAD }]}>
-      {cells.map((row, ri) => (
+      {displayRows.map((row, ri) => (
         <View key={ri} style={[heatmapStyles.row, { gap: GAP, marginBottom: GAP }]}>
-          {row.map((color, ci) => (
+          {row.map((cell, ci) => (
             <View
               key={ci}
-              style={[{ width: cellSize, height: cellSize, borderRadius: 3, backgroundColor: color }]}
+              style={[{ width: cellSize, height: cellSize, borderRadius: 3, backgroundColor: colorFor(cell) }]}
             />
           ))}
         </View>
       ))}
       <View style={[heatmapStyles.monthRow, { gap: GAP }]}>
-        {Array.from({ length: NUM_COLS }).map((_, ci) => (
+        {Array.from({ length: cols }).map((_, ci) => (
           <Text key={ci} style={[heatmapStyles.monthLabel, { width: cellSize }]}>
             {MONTH_MARKS[ci] ?? ''}
           </Text>
@@ -120,11 +128,23 @@ const heatmapStyles = StyleSheet.create({
 });
 
 /* ── Stats ── */
-function StatsRow() {
+interface StatsData {
+  total_notes: number;
+  total_active_days: number;
+  consecutive_days: number;
+}
+
+function fmtStat(val: number | undefined | null, toDash?: boolean): string {
+  if (val == null) return '–';
+  if (toDash && val === 1) return '–';
+  return String(val);
+}
+
+function StatsRow({ data }: { data: StatsData | null }) {
   const stats = [
-    { value: '12', label: '全部笔记' },
-    { value: '34', label: '累计天数' },
-    { value: '7', label: '连续天数' },
+    { value: fmtStat(data?.total_notes), label: '全部笔记' },
+    { value: fmtStat(data?.total_active_days), label: '累计天数' },
+    { value: fmtStat(data?.consecutive_days, true), label: '连续天数' },
   ];
   return (
     <View style={statsStyles.row}>
@@ -172,12 +192,17 @@ interface SessionData {
 
 function groupSessions(sessions: SessionData[]) {
   const now = new Date();
+  // 归零到当天 0:00，按日历日比较而非小时差
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const msPerDay = 1000 * 60 * 60 * 24;
+
   const groups: Record<string, SessionData[]> = {
     今天: [], 昨天: [], 七天内: [], '30天内': [], 更久: [],
   };
   for (const s of sessions) {
     const d = new Date(s.updated_at);
-    const days = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    const sessionDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const days = Math.floor((today.getTime() - sessionDay.getTime()) / msPerDay);
     if (days === 0) groups['今天'].push(s);
     else if (days === 1) groups['昨天'].push(s);
     else if (days < 7) groups['七天内'].push(s);
@@ -196,9 +221,17 @@ interface SidebarPanelProps {
 export default function SidebarPanel({ width, sessions, onSessionPress }: SidebarPanelProps) {
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '用户';
-  const userId = (user?.id ?? '00000').slice(0, 5);
+  const userId = user?.uid ?? (user?.id ?? '00000').slice(0, 5);
   const closeSidebar = useSidebarStore((s) => s.close);
   const groups = groupSessions(sessions);
+
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [activity, setActivity] = useState<ActivityData | null>(null);
+
+  useEffect(() => {
+    userService.getStats().then((res) => setStats(res.data)).catch(() => {});
+    userService.getActivity(14).then((res) => setActivity(res.data)).catch(() => {});
+  }, []);
 
   const handleProfilePress = () => {
     closeSidebar();
@@ -227,7 +260,7 @@ export default function SidebarPanel({ width, sessions, onSessionPress }: Sideba
       </Pressable>
 
       {/* Stats */}
-      <StatsRow />
+      <StatsRow data={stats} />
 
       <ScrollView
         style={styles.scrollArea}
@@ -238,7 +271,7 @@ export default function SidebarPanel({ width, sessions, onSessionPress }: Sideba
         <View style={styles.sectionTitle}>
           <Text style={styles.sectionTitleText}>学习日历</Text>
         </View>
-        <HeatmapGrid containerWidth={width} />
+        <HeatmapGrid containerWidth={width} activity={activity?.activity ?? null} />
 
         {/* Divider */}
         <View style={styles.dividerWrap}>

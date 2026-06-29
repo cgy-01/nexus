@@ -15,5 +15,8 @@ class UserResponse(BaseModel):
     avatar_url: str | None = None
     is_active: bool
     created_at: datetime
+    uid: str | None = None
+    phone: str | None = None
+    wechat: str | None = None
 
     model_config = {"from_attributes": True}

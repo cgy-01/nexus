@@ -22,6 +22,11 @@ class User(Base, UUIDMixin, TimestampMixin):
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    uid: Mapped[str | None] = mapped_column(
+        String(20), unique=True, nullable=True, index=True
+    )
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    wechat: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Relationships
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(

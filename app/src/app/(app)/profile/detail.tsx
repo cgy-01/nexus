@@ -75,7 +75,7 @@ const rowStyles = StyleSheet.create({
 export default function ProfileDetailScreen() {
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '程嘉文';
-  const userId = (user?.id ?? '38271').slice(0, 5);
+  const userId = user?.uid ?? (user?.id ?? '38271').slice(0, 5);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
