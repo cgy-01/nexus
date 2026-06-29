@@ -14,6 +14,7 @@
     "android": {
       "package": "com.yourcompany.nexus",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -27,6 +28,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withNetworkSecurityConfig",
       "expo-router",
       [
         "expo-splash-screen",
@@ -42,6 +44,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "28b0a687-5766-4a23-b025-75d76990f408"
+      }
     }
   }
 }

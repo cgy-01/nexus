@@ -10,8 +10,8 @@
 import axios from 'axios';
 import { tokenStore } from '@/services/token';
 
-// 生产环境：改为你的服务器地址；开发时可用 .env 覆盖
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://your-server-ip:8001/api/v1';
+// 内测服务器地址
+const BASE_URL = 'http://121.41.31.221:8001/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -54,6 +54,16 @@ function processQueue(error: unknown, token: string | null) {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // 内测阶段：打印详细错误便于排查
+    if (__DEV__ || true) {
+      console.log('[API Error]', {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        message: error.message,
+        code: error.code,
+        response: error.response?.status,
+      });
+    }
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
