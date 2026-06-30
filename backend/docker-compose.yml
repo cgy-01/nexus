@@ -11,7 +11,7 @@
 # immediately (hot-reload).
 # =============================================================================
 
-version: "3.9"
+# version: "3.9"
 
 services:
   # ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - /opt/nexus/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexus}"]
       interval: 5s
@@ -59,7 +59,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
-      - minio_data:/data
+      - /opt/nexus/data/minio:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -93,7 +93,3 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-
-volumes:
-  postgres_data:
-  minio_data:
