@@ -45,4 +45,4 @@ jobs:
           # --non-interactive 保证在无人值守环境下不会因为等待输入而卡死
           eas build --platform android --profile preview --non-interactive
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_TOKEN: ${{ secrets.EXPO_NEXUS_TOKEN }}
