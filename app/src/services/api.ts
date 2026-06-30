@@ -11,7 +11,8 @@ import axios from 'axios';
 import { tokenStore } from '@/services/token';
 
 // 内测服务器地址
-const BASE_URL = 'http://121.41.31.221:8001/api/v1';
+export const SERVER_HOST = 'http://121.41.31.221:8001';
+const BASE_URL = `${SERVER_HOST}/api/v1`;
 
 const api = axios.create({
   baseURL: BASE_URL,

@@ -1,10 +1,11 @@
 """User profile endpoints."""
 
+import os
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,13 @@ from src.infra.security import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+BEIJING = timezone(timedelta(hours=8))
+
+
+def _today_beijing() -> date:
+    """Return today's date in Beijing time (UTC+8)."""
+    return (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+
 
 @router.get(
     "/me",
@@ -28,6 +36,66 @@ async def get_me(
     current_user: User = Depends(get_current_user),
 ) -> dict[str, UserResponse]:
     """Return the authenticated user's profile."""
+    return {"data": UserResponse.model_validate(current_user)}
+
+
+class UpdateProfileRequest(BaseModel):
+    """Fields that the user can update."""
+
+    display_name: str | None = Field(None, max_length=100)
+    avatar_url: str | None = Field(None, max_length=500)
+
+
+@router.patch("/me", response_model=ApiResponse[UserResponse])
+async def update_me(
+    body: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, UserResponse]:
+    """Update the authenticated user's profile fields."""
+    if body.display_name is not None:
+        current_user.display_name = body.display_name.strip() or None
+    if body.avatar_url is not None:
+        current_user.avatar_url = body.avatar_url.strip() or None
+
+    # Validate at least one field is present
+    if body.display_name is None and body.avatar_url is None:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    await db.flush()
+    return {"data": UserResponse.model_validate(current_user)}
+
+
+AVATAR_DIR = "/app/static/avatars"
+
+
+@router.post("/me/avatar", response_model=ApiResponse[UserResponse])
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, UserResponse]:
+    """Upload a new avatar image."""
+    os.makedirs(AVATAR_DIR, exist_ok=True)
+
+    # Validate file type
+    ext = os.path.splitext(file.filename or "avatar.jpg")[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+        raise HTTPException(status_code=400, detail="仅支持 jpg/png/webp 格式")
+
+    # Generate unique filename
+    filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(AVATAR_DIR, filename)
+
+    # Save to disk
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    # Update user record
+    current_user.avatar_url = f"/static/avatars/{filename}"
+    await db.flush()
+
     return {"data": UserResponse.model_validate(current_user)}
 
 
@@ -55,26 +123,38 @@ async def get_user_stats(
         select(func.count(Document.id)).where(Document.user_id == user_id)
     ) or 0
 
-    # total_active_days: count distinct dates with messages
+    # total_active_days: count distinct dates with messages (UTC+8 aligned)
     active_days = await db.scalar(
-        select(func.count(func.distinct(func.date(Message.created_at)))).select_from(
+        select(func.count(func.distinct(
+            func.date(Message.created_at + text("interval '8 hours'"))
+        ))).select_from(
             Message
         ).join(Session, Message.session_id == Session.id).where(
             Session.user_id == user_id
         )
     ) or 0
 
-    # consecutive_days: count from today backwards
-    today = date.today()
+    # consecutive_days: count backwards from today (UTC+8). If no activity today, start from yesterday.
+    today = _today_beijing()
+    has_today = await db.scalar(
+        select(Message.id).select_from(Message).join(
+            Session, Message.session_id == Session.id
+        ).where(
+            Session.user_id == user_id,
+            func.date(Message.created_at + text("interval '8 hours'")) == today,
+        ).limit(1)
+    )
+    start_day = today if has_today else today - timedelta(days=1)
+
     consecutive = 0
-    for i in range(365):  # max 365 days
-        check_date = today - timedelta(days=i)
+    for i in range(365):
+        check_date = start_day - timedelta(days=i)
         has_activity = await db.scalar(
             select(Message.id).select_from(Message).join(
                 Session, Message.session_id == Session.id
             ).where(
                 Session.user_id == user_id,
-                func.date(Message.created_at) == check_date,
+                func.date(Message.created_at + text("interval '8 hours'")) == check_date,
             ).limit(1)
         )
         if has_activity:
@@ -110,40 +190,42 @@ async def get_user_activity(
 
     daily_score = msg_count × 0.3 + doc_count × 1.0
     Row 0=Mon, Row 6=Sun. Rightmost col=this week.
+    All dates shifted +8h to align with Beijing time.
     """
-    today = date.today()
+    tz_offset = text("interval '8 hours'")
+    today = _today_beijing()
     user_id = current_user.id
     weekday = today.weekday()
     min_date = today - timedelta(days=weekday + (weeks - 1) * 7)
 
-    # ── Message counts per day ──
+    # ── Message counts per day (UTC+8) ──
     msg_result = await db.execute(
         select(
-            func.date(Message.created_at).label("d"),
+            func.date(Message.created_at + tz_offset).label("d"),
             func.count(Message.id).label("c"),
         ).select_from(Message).join(
             Session, Message.session_id == Session.id
         ).where(
             Session.user_id == user_id,
-            func.date(Message.created_at) >= min_date,
-            func.date(Message.created_at) <= today,
-        ).group_by(func.date(Message.created_at))
+            func.date(Message.created_at + tz_offset) >= min_date,
+            func.date(Message.created_at + tz_offset) <= today,
+        ).group_by(func.date(Message.created_at + tz_offset))
     )
     msg_counts: dict[date, int] = {}
     for row in msg_result:
         d = _to_date(row.d)
         msg_counts[d] = row.c
 
-    # ── Document (note) counts per day ──
+    # ── Document (note) counts per day (UTC+8) ──
     doc_result = await db.execute(
         select(
-            func.date(Document.created_at).label("d"),
+            func.date(Document.created_at + tz_offset).label("d"),
             func.count(Document.id).label("c"),
         ).where(
             Document.user_id == user_id,
-            func.date(Document.created_at) >= min_date,
-            func.date(Document.created_at) <= today,
-        ).group_by(func.date(Document.created_at))
+            func.date(Document.created_at + tz_offset) >= min_date,
+            func.date(Document.created_at + tz_offset) <= today,
+        ).group_by(func.date(Document.created_at + tz_offset))
     )
     doc_counts: dict[date, int] = {}
     for row in doc_result:

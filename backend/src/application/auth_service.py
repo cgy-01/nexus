@@ -53,11 +53,15 @@ class AuthService:
                 detail="A user with this email already exists",
             )
 
+        # Generate unique 5-digit UID
+        uid = await _generate_uid(db)
+
         # Create user
         user = User(
             email=email,
             hashed_password=hash_password(password),
             display_name=display_name,
+            uid=uid,
         )
         db.add(user)
         await db.flush()  # populate user.id
@@ -250,3 +254,17 @@ class AuthService:
                 user_id=str(user_id),
                 count=len(tokens),
             )
+
+
+async def _generate_uid(db: AsyncSession) -> str:
+    """Assign the next sequential UID based on registration order."""
+    from sqlalchemy import cast, Integer
+    result = await db.execute(
+        select(cast(User.uid, Integer))
+        .where(User.uid.isnot(None))
+        .order_by(cast(User.uid, Integer).desc())
+        .limit(1)
+    )
+    last = result.scalar_one_or_none()
+    next_uid = (last + 1) if last else 1
+    return str(next_uid)

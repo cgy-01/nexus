@@ -136,12 +136,6 @@ export default function AppLayout() {
               <UserTabIcon size={focused ? 22 : 20} color={color} />
             ),
           }}
-          listeners={{
-            tabPress: () => {
-              // 切到"我的"时始终回到首页，不残留 detail 页面
-              router.replace('/(app)/profile' as Href);
-            },
-          }}
         />
       </Tabs>
 

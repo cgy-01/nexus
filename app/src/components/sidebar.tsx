@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, Platform, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, View, Text, Platform, ScrollView, Pressable, Image } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { useAuthStore } from '@/stores/auth.store';
+import { SERVER_HOST } from '@/services/api';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { Spacing } from '@/constants/theme';
 import { userService, type StatsData, type ActivityData } from '@/services/user.service';
@@ -247,9 +248,13 @@ export default function SidebarPanel({ width, sessions, onSessionPress }: Sideba
       >
         <View style={styles.profileLeft}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(displayName[0] ?? '?').toUpperCase()}
-            </Text>
+            {user?.avatar_url ? (
+              <Image source={{ uri: `${SERVER_HOST}${user.avatar_url}` }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {(displayName[0] ?? '?').toUpperCase()}
+              </Text>
+            )}
           </View>
           <View style={styles.nameCol}>
             <Text style={styles.username}>{displayName}</Text>
@@ -332,6 +337,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  avatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   nameCol: {
     flexDirection: 'column',

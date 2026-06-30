@@ -25,6 +25,7 @@ interface AuthState {
   register: (req: RegisterRequest) => Promise<void>;
   logout: () => void;
   setTokens: (tokens: { access_token: string; refresh_token: string; token_type: string }) => void;
+  setUser: (user: User) => void;
   hydrate: () => void;
 }
 
@@ -76,6 +77,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
     });
+  },
+
+  setUser: (user) => {
+    set({ user });
   },
 
   hydrate: () => {
