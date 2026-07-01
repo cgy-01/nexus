@@ -26,7 +26,8 @@ import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
 import { Spacing } from '@/constants/theme';
 import { CameraIcon } from '@/components/icons';
-import api from '@/services/api';
+import api, { SERVER_HOST } from '@/services/api';
+import { tokenStore } from '@/services/token';
 
 /* ── Chevron ── */
 function ChevronRight() {
@@ -137,8 +138,14 @@ export default function ProfileDetailScreen() {
     try {
       const form = new FormData();
       (form.append as any)('file', { uri, type: 'image/jpeg', name: 'avatar.jpg' });
-      const { data } = await api.post('/users/me/avatar', form);
-      setUser(data.data);
+      const token = tokenStore.getAccessToken();
+      const res = await fetch(`${SERVER_HOST}/api/v1/users/me/avatar`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      });
+      const json = await res.json();
+      if (json.data) setUser(json.data);
     } catch (e) {
       console.error('[avatar] upload failed', e);
       Alert.alert('上传失败');
