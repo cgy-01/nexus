@@ -38,9 +38,11 @@ COPY alembic.ini /app/
 
 # Ensure correct ownership
 RUN chown -R nexus:nexus /app
+RUN chmod -R 755 /app/.venv
+
 USER nexus
 
 EXPOSE 8000
 
 # Default command (can be overridden for worker, etc.)
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
