@@ -98,7 +98,7 @@ async def upload_avatar(
     )
 
     # Update user record
-    current_user.avatar_url = f"/api/v1/avatars/{current_user.id}"
+    current_user.avatar_url = f"/api/v1/users/avatars/{current_user.id}"
     await db.flush()
 
     return {"data": UserResponse.model_validate(current_user)}
