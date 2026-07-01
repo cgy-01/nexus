@@ -137,11 +137,10 @@ export default function ProfileDetailScreen() {
     try {
       const form = new FormData();
       (form.append as any)('file', { uri, type: 'image/jpeg', name: 'avatar.jpg' });
-      const { data } = await api.post('/users/me/avatar', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      if (data.data) setUser(data.data);
-    } catch {
+      const { data } = await api.post('/users/me/avatar', form);
+      setUser(data.data);
+    } catch (e) {
+      console.error('[avatar] upload failed', e);
       Alert.alert('上传失败');
     } finally {
       setSaving(false);
