@@ -85,6 +85,7 @@ export default function ProfileDetailScreen() {
   const [avatarPicker, setAvatarPicker] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [avatarVersion, setAvatarVersion] = useState(0);
 
   /* ── 昵称编辑 ── */
   const openNameEdit = () => {
@@ -149,7 +150,10 @@ export default function ProfileDetailScreen() {
         },
       );
       const json = JSON.parse(result.body);
-      if (json.data) setUser(json.data);
+      if (json.data) {
+        setUser(json.data);
+        setAvatarVersion((v) => v + 1);
+      }
     } catch (e) {
       console.error('[avatar] upload failed', e);
       Alert.alert('上传失败');
@@ -159,7 +163,7 @@ export default function ProfileDetailScreen() {
   };
 
   const avatarUrl = user?.avatar_url
-    ? `http://121.41.31.221:8001${user.avatar_url}`
+    ? `http://121.41.31.221:8001${user.avatar_url}?v=${avatarVersion}`
     : null;
 
   return (
