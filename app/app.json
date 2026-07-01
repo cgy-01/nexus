@@ -3,6 +3,12 @@
     "name": "Nexus",
     "slug": "app",
     "version": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/28b0a687-5766-4a23-b025-75d76990f408"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "app",
