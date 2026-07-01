@@ -13,8 +13,8 @@ def get_minio_client() -> Minio:
     settings = get_settings()
     client = Minio(
         endpoint=settings.minio_endpoint,
-        access_key=settings.minio_access_key,
-        secret_key=settings.minio_secret_key,
+        access_key=settings.minio_root_user,
+        secret_key=settings.minio_root_password,
         secure=settings.minio_secure,
     )
     _ensure_bucket(client, settings.minio_bucket)
