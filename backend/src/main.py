@@ -5,7 +5,6 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import os
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -154,7 +153,6 @@ def create_app() -> FastAPI:
     # Routes
     # -----------------------------------------------------------------------
 
-    os.makedirs("/app/static/avatars", exist_ok=True)
     app.mount("/static", StaticFiles(directory="/app/static"), name="static")
 
     app.include_router(v1_router, prefix="/api/v1")

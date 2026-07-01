@@ -1,10 +1,9 @@
 """User profile endpoints."""
 
-import os
-import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +15,7 @@ from src.domain.models.user import User
 from src.domain.schemas.common import ApiResponse
 from src.domain.schemas.user import UserResponse
 from src.infra.database import get_db
+from src.infra.minio_client import get_minio_client
 from src.infra.security import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -66,7 +66,7 @@ async def update_me(
     return {"data": UserResponse.model_validate(current_user)}
 
 
-AVATAR_DIR = "/app/static/avatars"
+AVATAR_PREFIX = "avatars"
 
 
 @router.post("/me/avatar", response_model=ApiResponse[UserResponse])
@@ -75,28 +75,64 @@ async def upload_avatar(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, UserResponse]:
-    """Upload a new avatar image."""
-    os.makedirs(AVATAR_DIR, exist_ok=True)
-
+    """Upload a new avatar image (stored in MinIO)."""
     # Validate file type
-    ext = os.path.splitext(file.filename or "avatar.jpg")[1].lower()
-    if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+    filename = file.filename or "avatar.jpg"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp"):
         raise HTTPException(status_code=400, detail="仅支持 jpg/png/webp 格式")
 
-    # Generate unique filename
-    filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}{ext}"
-    filepath = os.path.join(AVATAR_DIR, filename)
+    content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+    object_key = f"{AVATAR_PREFIX}/{current_user.id}.{ext}"
 
-    # Save to disk
+    # Upload to MinIO
     content = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
+    minio = get_minio_client()
+    minio.put_object(
+        bucket_name="nexus-files",
+        object_name=object_key,
+        data=content,
+        length=len(content),
+        content_type=content_type_map.get(ext, "application/octet-stream"),
+    )
 
     # Update user record
-    current_user.avatar_url = f"/static/avatars/{filename}"
+    current_user.avatar_url = f"/api/v1/avatars/{current_user.id}"
     await db.flush()
 
     return {"data": UserResponse.model_validate(current_user)}
+
+
+@router.get("/avatars/{user_id}")
+async def serve_avatar(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Serve a user's avatar image from MinIO."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or not user.avatar_url:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
+    # Derive object key from the stored URL pattern
+    # avatar_url format: /api/v1/avatars/{user_id}
+    ext = "jpg"  # default, will try to find actual object
+    minio = get_minio_client()
+
+    # Try each possible extension
+    for try_ext in ("jpg", "jpeg", "png", "webp"):
+        try_key = f"{AVATAR_PREFIX}/{user_id}.{try_ext}"
+        try:
+            obj = minio.get_object("nexus-files", try_key)
+            content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+            return StreamingResponse(
+                obj.stream(amt=64 * 1024),
+                media_type=content_type_map.get(try_ext, "application/octet-stream"),
+            )
+        except Exception:
+            continue
+
+    raise HTTPException(status_code=404, detail="Avatar not found")
 
 
 # ── Stats ──
