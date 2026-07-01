@@ -1,5 +1,6 @@
 """User profile endpoints."""
 
+import io
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
@@ -91,7 +92,7 @@ async def upload_avatar(
     minio.put_object(
         bucket_name="nexus-files",
         object_name=object_key,
-        data=content,
+        data=io.BytesIO(content),
         length=len(content),
         content_type=content_type_map.get(ext, "application/octet-stream"),
     )
