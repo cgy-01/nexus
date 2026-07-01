@@ -153,6 +153,9 @@ def create_app() -> FastAPI:
     # Routes
     # -----------------------------------------------------------------------
 
+    import os
+
+    os.makedirs("/app/static", exist_ok=True)
     app.mount("/static", StaticFiles(directory="/app/static"), name="static")
 
     app.include_router(v1_router, prefix="/api/v1")
