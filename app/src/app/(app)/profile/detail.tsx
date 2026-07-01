@@ -20,8 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
-import { FileSystemUploadType } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { FileSystemUploadType } from 'expo-file-system/legacy';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
