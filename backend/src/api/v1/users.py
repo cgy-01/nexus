@@ -1,6 +1,7 @@
 """User profile endpoints."""
 
 import io
+import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
@@ -84,7 +85,7 @@ async def upload_avatar(
         raise HTTPException(status_code=400, detail="仅支持 jpg/png/webp 格式")
 
     content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
-    object_key = f"{AVATAR_PREFIX}/{current_user.id}.{ext}"
+    object_key = f"{AVATAR_PREFIX}/{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
 
     # Upload to MinIO
     content = await file.read()
@@ -98,7 +99,7 @@ async def upload_avatar(
     )
 
     # Update user record
-    current_user.avatar_url = f"/api/v1/users/avatars/{current_user.id}"
+    current_user.avatar_url = object_key
     await db.flush()
 
     return {"data": UserResponse.model_validate(current_user)}
@@ -115,25 +116,23 @@ async def serve_avatar(
     if user is None or not user.avatar_url:
         raise HTTPException(status_code=404, detail="Avatar not found")
 
-    # Derive object key from the stored URL pattern
-    # avatar_url format: /api/v1/avatars/{user_id}
-    ext = "jpg"  # default, will try to find actual object
+    # avatar_url stores the MinIO object key, e.g. "avatars/user_id_a1b2c3d4.jpg"
+    object_key = user.avatar_url
     minio = get_minio_client()
 
-    # Try each possible extension
-    for try_ext in ("jpg", "jpeg", "png", "webp"):
-        try_key = f"{AVATAR_PREFIX}/{user_id}.{try_ext}"
-        try:
-            obj = minio.get_object("nexus-files", try_key)
-            content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
-            return StreamingResponse(
-                obj.stream(amt=64 * 1024),
-                media_type=content_type_map.get(try_ext, "application/octet-stream"),
-            )
-        except Exception:
-            continue
+    try:
+        obj = minio.get_object("nexus-files", object_key)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Avatar not found")
 
-    raise HTTPException(status_code=404, detail="Avatar not found")
+    # Derive content type from file extension
+    ext = object_key.rsplit(".", 1)[-1].lower() if "." in object_key else "jpg"
+    content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+
+    return StreamingResponse(
+        obj.stream(amt=64 * 1024),
+        media_type=content_type_map.get(ext, "application/octet-stream"),
+    )
 
 
 # ── Stats ──

@@ -162,8 +162,8 @@ export default function ProfileDetailScreen() {
     }
   };
 
-  const avatarUrl = user?.avatar_url
-    ? `http://121.41.31.221:8001${user.avatar_url}?v=${avatarVersion}`
+  const avatarUrl = user?.id
+    ? `http://121.41.31.221:8001/api/v1/users/avatars/${user.id}?v=${avatarVersion}`
     : null;
 
   return (
