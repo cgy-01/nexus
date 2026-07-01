@@ -21,6 +21,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { FileSystemUploadType } from 'expo-file-system';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
@@ -142,7 +143,7 @@ export default function ProfileDetailScreen() {
         uri,
         {
           httpMethod: 'POST',
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          uploadType: FileSystemUploadType.MULTIPART,
           fieldName: 'file',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         },
