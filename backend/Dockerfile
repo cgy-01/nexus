@@ -11,7 +11,7 @@ WORKDIR /build
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency manifest
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 
 # Install into a venv (no dev dependencies)
 RUN uv sync --frozen --no-dev --no-install-project

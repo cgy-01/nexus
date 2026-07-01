@@ -5,8 +5,30 @@ on:
     branches: [ main ] # 只有推送到 main 分支时才会触发
 
 jobs:
-  # ── 后端部署 ──
+  # ── 任务零：检查哪些目录发生了代码变更 ──
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check paths for changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'app/**'
+
+  # ── 任务一：后端部署 ──
   deploy-backend:
+    needs: check-changes # 必须等 check-changes 任务跑完
+    if: ${{ needs.check-changes.outputs.backend == 'true' }} # 只有 backend 目录有变更才执行
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -17,8 +39,10 @@ jobs:
           cd backend
           docker compose up -d --build
 
-  # ── 前端热更新 ──
+  # ── 任务二：前端热更新 ──
   publish-frontend-update:
+    needs: check-changes # 必须等 check-changes 任务跑完
+    if: ${{ needs.check-changes.outputs.frontend == 'true' }} # 只有 app 目录有变更才执行
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
