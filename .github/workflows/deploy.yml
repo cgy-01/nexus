@@ -37,6 +37,7 @@ jobs:
       - name: Build and Restart Backend Docker
         run: |
           cd backend
+          ln -sf /opt/nexus/.env .env
           docker compose up -d --build
 
   # ── 任务二：前端热更新 ──
