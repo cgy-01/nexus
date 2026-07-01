@@ -26,7 +26,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
 import { Spacing } from '@/constants/theme';
 import { CameraIcon } from '@/components/icons';
-import api, { SERVER_HOST } from '@/services/api';
+import { SERVER_HOST } from '@/services/api';
 import { tokenStore } from '@/services/token';
 
 /* ── Chevron ── */
@@ -136,15 +136,18 @@ export default function ProfileDetailScreen() {
     setAvatarPicker(false);
     setSaving(true);
     try {
-      const form = new FormData();
-      (form.append as any)('file', { uri, type: 'image/jpeg', name: 'avatar.jpg' });
       const token = tokenStore.getAccessToken();
-      const res = await fetch(`${SERVER_HOST}/api/v1/users/me/avatar`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: form,
-      });
-      const json = await res.json();
+      const result = await FileSystem.uploadAsync(
+        `${SERVER_HOST}/api/v1/users/me/avatar`,
+        uri,
+        {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: 'file',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+      const json = JSON.parse(result.body);
       if (json.data) setUser(json.data);
     } catch (e) {
       console.error('[avatar] upload failed', e);
