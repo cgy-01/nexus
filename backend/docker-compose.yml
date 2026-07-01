@@ -1,30 +1,14 @@
 # =============================================================================
-# Nexus AI Backend — Local Development Stack
+# Nexus AI Backend — Production
 # =============================================================================
-#
-# Usage:
-#   docker compose up -d          # start all services
-#   docker compose logs -f api    # tail API logs
-#   docker compose down -v        # stop and remove volumes
-#
-# The API source and alembic/ are mounted as volumes so changes take effect
-# immediately (hot-reload).
-# =============================================================================
-
-# version: "3.9"
 
 services:
-  # ---------------------------------------------------------------------------
-  # PostgreSQL 16 + pgvector extension preloaded
-  # ---------------------------------------------------------------------------
   postgres:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-nexus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nexus_dev}
       POSTGRES_DB: ${POSTGRES_DB:-nexus}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - /opt/nexus/data/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -32,29 +16,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
-  # ---------------------------------------------------------------------------
-  # Redis 7
-  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
-  # ---------------------------------------------------------------------------
-  # MinIO (S3-compatible object storage)
-  # ---------------------------------------------------------------------------
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -65,27 +40,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
-  # ---------------------------------------------------------------------------
-  # FastAPI application
-  # ---------------------------------------------------------------------------
   api:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "8001:8000"
     env_file:
-      - /opt/nexus/.env
-    environment:
-      # Override hostnames for Docker network
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:-nexus_dev}@postgres:5432/${POSTGRES_DB:-nexus}
-      REDIS_URL: redis://redis:6379/0
-    volumes:
-      - ./src:/app/src
-      - ./alembic:/app/alembic
-      - ./alembic.ini:/app/alembic.ini
-      - ./pyproject.toml:/app/pyproject.toml
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,3 +57,4 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    restart: unless-stopped

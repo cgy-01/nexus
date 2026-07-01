@@ -2,12 +2,12 @@ name: Nexus Automated Deployment
 
 on:
   push:
-    branches: [ main ] # 只有推送到 main 分支时才会触发
+    branches: [ main ]
 
 jobs:
-  # 任务一：部署后端（在你的杭州服务器上执行）
+  # ── 后端部署（杭州服务器自托管 Runner）──
   deploy-backend:
-    runs-on: self-hosted # 这里的 self-hosted 会自动匹配你刚才注册的 Runner
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -15,11 +15,9 @@ jobs:
       - name: Build and Restart Backend Docker
         run: |
           cd backend
-          # actions/checkout 会把代码拉取到 runner 的 _work 目录
-          # 直接执行 docker compose 即可
           docker compose up -d --build
 
-  # 任务二：打包前端（在 GitHub 官方云服务器上执行，不占用你的服务器资源）
+  # ── 前端打包（GitHub 云端，不占服务器资源）──
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -42,7 +40,6 @@ jobs:
       - name: Build Android App (APK)
         run: |
           cd app
-          # --non-interactive 保证在无人值守环境下不会因为等待输入而卡死
           eas build --platform android --profile preview --non-interactive
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_NEXUS_TOKEN }}
+          EXPO_TOKEN: ${{ secrets.EXO_NEXUS_TOKEN }}
