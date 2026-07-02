@@ -4,7 +4,7 @@ import io
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
@@ -16,6 +16,7 @@ from src.domain.models.session import Session
 from src.domain.models.user import User
 from src.domain.schemas.common import ApiResponse
 from src.domain.schemas.user import UserResponse
+from src.infra.config import get_settings
 from src.infra.database import get_db
 from src.infra.minio_client import get_minio_client
 from src.infra.security import get_current_user
@@ -65,6 +66,7 @@ async def update_me(
         raise HTTPException(status_code=400, detail="No fields to update")
 
     await db.flush()
+    await db.refresh(current_user)
     return {"data": UserResponse.model_validate(current_user)}
 
 
@@ -85,22 +87,24 @@ async def upload_avatar(
         raise HTTPException(status_code=400, detail="仅支持 jpg/png/webp 格式")
 
     content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+    minio = get_minio_client()
+    bucket = get_settings().minio_bucket
     object_key = f"{AVATAR_PREFIX}/{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
 
     # Upload to MinIO
     content = await file.read()
-    minio = get_minio_client()
     minio.put_object(
-        bucket_name="nexus-files",
+        bucket_name=bucket,
         object_name=object_key,
         data=io.BytesIO(content),
         length=len(content),
         content_type=content_type_map.get(ext, "application/octet-stream"),
     )
 
-    # Update user record
+    # Update user record and persist
     current_user.avatar_url = object_key
     await db.flush()
+    await db.refresh(current_user)
 
     return {"data": UserResponse.model_validate(current_user)}
 
@@ -108,6 +112,7 @@ async def upload_avatar(
 @router.get("/avatars/{user_id}")
 async def serve_avatar(
     user_id: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
     """Serve a user's avatar image from MinIO."""
@@ -118,10 +123,11 @@ async def serve_avatar(
 
     # avatar_url stores the MinIO object key, e.g. "avatars/user_id_a1b2c3d4.jpg"
     object_key = user.avatar_url
+    bucket = get_settings().minio_bucket
     minio = get_minio_client()
 
     try:
-        obj = minio.get_object("nexus-files", object_key)
+        obj = minio.get_object(bucket, object_key)
     except Exception:
         raise HTTPException(status_code=404, detail="Avatar not found")
 
@@ -129,9 +135,14 @@ async def serve_avatar(
     ext = object_key.rsplit(".", 1)[-1].lower() if "." in object_key else "jpg"
     content_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 
+    # Release the MinIO HTTP connection after the response body is fully sent
+    background_tasks.add_task(obj.close)
+    background_tasks.add_task(obj.release_conn)
+
     return StreamingResponse(
         obj.stream(amt=64 * 1024),
         media_type=content_type_map.get(ext, "application/octet-stream"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
 
 

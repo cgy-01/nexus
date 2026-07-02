@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text, Platform, ScrollView, Pressable, Image } from 'react-native';
 import { router, type Href } from 'expo-router';
 
@@ -228,6 +228,16 @@ export default function SidebarPanel({ width, sessions, onSessionPress }: Sideba
 
   const [stats, setStats] = useState<StatsData | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
+  // 当 avatar_url 变化时递增，强制 Image 组件重新加载
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const prevAvatarUrl = useRef(user?.avatar_url);
+
+  useEffect(() => {
+    if (user?.avatar_url !== prevAvatarUrl.current) {
+      prevAvatarUrl.current = user?.avatar_url;
+      setAvatarVersion((v) => v + 1);
+    }
+  }, [user?.avatar_url]);
 
   useEffect(() => {
     userService.getStats().then((res) => setStats(res.data)).catch(() => {});
@@ -249,7 +259,10 @@ export default function SidebarPanel({ width, sessions, onSessionPress }: Sideba
         <View style={styles.profileLeft}>
           <View style={styles.avatar}>
             {user?.avatar_url ? (
-              <Image source={{ uri: `${SERVER_HOST}${user.avatar_url}` }} style={styles.avatarImg} />
+              <Image
+                source={{ uri: `${SERVER_HOST}/api/v1/users/avatars/${user.id}?v=${avatarVersion}` }}
+                style={styles.avatarImg}
+              />
             ) : (
               <Text style={styles.avatarText}>
                 {(displayName[0] ?? '?').toUpperCase()}
