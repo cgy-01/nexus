@@ -1,0 +1,3 @@
+# Force Git to use LF line endings on checkout for all files
+# This ensures that Expo fingerprint hash remains consistent between Windows (local) and Linux (CI/CD)
+* text=auto eol=lf

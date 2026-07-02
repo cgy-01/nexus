@@ -1,0 +1,16 @@
+# Ignore build folders and temporary files
+.expo/**/*
+.idea/**/*
+.vscode/**/*
+node_modules/**/*
+build/**/*
+temp/**/*
+
+# Ignore native gradle build outputs but keep build configuration files
+android/build/**/*
+android/.gradle/**/*
+android/app/build/**/*
+
+# Ignore line endings or user-specific files in android
+android/local.properties
+android/**/*.iml
