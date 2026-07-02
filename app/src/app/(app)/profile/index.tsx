@@ -11,9 +11,11 @@ import { router, type Href } from 'expo-router';
 import { useAuthStore } from '@/stores/auth.store';
 import { SERVER_HOST } from '@/services/api';
 import { Spacing } from '@/constants/theme';
+import { useProfileOverlayStore } from '@/stores/profile-overlay.store';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
+  const openProfileOverlay = useProfileOverlayStore((s) => s.open);
 
   const handleLogout = () => {
     Alert.alert('退出登录', '确定要退出登录吗？', [
@@ -36,7 +38,7 @@ export default function ProfileScreen() {
       {/* User card — flat, no background */}
       <Pressable
         style={styles.userRow}
-        onPress={() => router.navigate('/(app)/profile/detail' as Href)}
+        onPress={openProfileOverlay}
       >
         <View style={styles.avatar}>
           {user?.avatar_url ? (

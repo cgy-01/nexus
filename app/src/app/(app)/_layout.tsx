@@ -11,8 +11,10 @@ import { Platform, Text, Pressable, View, Animated, Dimensions, StyleSheet } fro
 import { Tabs, router, type Href } from 'expo-router';
 import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
+import { useProfileOverlayStore } from '@/stores/profile-overlay.store';
 import { useChatStore } from '@/stores/chat.store';
 import SidebarDrawer from '@/components/sidebar-drawer';
+import ProfileDetailPanel from '@/components/profile-detail-panel';
 import { ChatTabIcon, NotesTabIcon, UserTabIcon } from '@/components/icons';
 
 /** 调试开关：true = 跳过登录校验，直接进入主应用 */
@@ -50,6 +52,12 @@ export default function AppLayout() {
   const sidebarAnim = useRef(new Animated.Value(0)).current;
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
+  /* ── 用户设置覆层 ── */
+  const isProfileOpen = useProfileOverlayStore((s) => s.isOpen);
+  const closeProfile = useProfileOverlayStore((s) => s.close);
+  const profileAnim = useRef(new Animated.Value(0)).current;
+  const [profileVisible, setProfileVisible] = useState(false);
+
   useEffect(() => {
     if (isSidebarOpen) {
       setSidebarVisible(true);
@@ -59,6 +67,16 @@ export default function AppLayout() {
         .start(() => setSidebarVisible(false));
     }
   }, [isSidebarOpen, sidebarAnim]);
+
+  useEffect(() => {
+    if (isProfileOpen) {
+      setProfileVisible(true);
+      Animated.spring(profileAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    } else {
+      Animated.spring(profileAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 })
+        .start(() => setProfileVisible(false));
+    }
+  }, [isProfileOpen, profileAnim]);
 
   const overlayOpacity = sidebarAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
 
@@ -154,6 +172,13 @@ export default function AppLayout() {
           width={SIDEBAR_WIDTH}
           sessions={sessions}
           onSessionPress={handleSessionPress}
+        />
+      )}
+      {/* 用户设置覆层 — 从右往左滑入，覆盖整个页面包括底栏 */}
+      {profileVisible && (
+        <ProfileDetailPanel
+          animValue={profileAnim}
+          onClose={closeProfile}
         />
       )}
     </View>
