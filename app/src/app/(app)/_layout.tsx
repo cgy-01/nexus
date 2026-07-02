@@ -11,8 +11,10 @@ import { Platform, Text, Pressable, View, Animated, Dimensions, StyleSheet } fro
 import { Tabs, router, type Href } from 'expo-router';
 import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
+import { useProfilePanelStore } from '@/stores/profile-panel.store';
 import { useChatStore } from '@/stores/chat.store';
 import SidebarDrawer from '@/components/sidebar-drawer';
+import ProfileDetailPanel from '@/components/profile-detail-panel';
 import { ChatTabIcon, NotesTabIcon, UserTabIcon } from '@/components/icons';
 
 /** 调试开关：true = 跳过登录校验，直接进入主应用 */
@@ -59,6 +61,21 @@ export default function AppLayout() {
         .start(() => setSidebarVisible(false));
     }
   }, [isSidebarOpen, sidebarAnim]);
+
+  /* ── 个人信息面板 ── */
+  const isProfilePanelOpen = useProfilePanelStore((s) => s.isOpen);
+  const profilePanelAnim = useRef(new Animated.Value(0)).current;
+  const [profilePanelVisible, setProfilePanelVisible] = useState(false);
+
+  useEffect(() => {
+    if (isProfilePanelOpen) {
+      setProfilePanelVisible(true);
+      Animated.spring(profilePanelAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    } else {
+      Animated.spring(profilePanelAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 })
+        .start(() => setProfilePanelVisible(false));
+    }
+  }, [isProfilePanelOpen, profilePanelAnim]);
 
   const overlayOpacity = sidebarAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
 
@@ -155,6 +172,11 @@ export default function AppLayout() {
           sessions={sessions}
           onSessionPress={handleSessionPress}
         />
+      )}
+
+      {/* 个人信息面板 — 覆盖整个页面包括底栏 */}
+      {profilePanelVisible && (
+        <ProfileDetailPanel animValue={profilePanelAnim} />
       )}
     </View>
   );

@@ -9,11 +9,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
 
 import { useAuthStore } from '@/stores/auth.store';
+import { useProfilePanelStore } from '@/stores/profile-panel.store';
 import { SERVER_HOST } from '@/services/api';
 import { Spacing } from '@/constants/theme';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
+  const openProfilePanel = useProfilePanelStore((s) => s.open);
 
   const handleLogout = () => {
     Alert.alert('退出登录', '确定要退出登录吗？', [
@@ -36,11 +38,16 @@ export default function ProfileScreen() {
       {/* User card — flat, no background */}
       <Pressable
         style={styles.userRow}
-        onPress={() => router.navigate('/(app)/profile/detail' as Href)}
+        onPress={openProfilePanel}
       >
         <View style={styles.avatar}>
           {user?.avatar_url ? (
-            <Image source={{ uri: `${SERVER_HOST}${user.avatar_url}` }} style={styles.avatarImg} />
+            <Image
+              source={{
+                uri: `${SERVER_HOST}/api/v1/users/avatars/${user.id}?v=${user.avatar_url.slice(-8)}`,
+              }}
+              style={styles.avatarImg}
+            />
           ) : (
             <Text style={styles.avatarText}>
               {(displayName[0] ?? '?').toUpperCase()}

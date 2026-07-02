@@ -1,5 +1,8 @@
 /**
- * 个人信息详情页 — 支持修改头像（相册/拍照）和昵称
+ * ProfileDetailPanel — 个人信息设置面板
+ *
+ * 作为全屏 overlay 由 (app)/_layout.tsx 渲染，覆盖底栏。
+ * 从右往左滑入，点击返回或手势关闭。
  */
 
 import { useState } from 'react';
@@ -15,20 +18,24 @@ import {
   Modal,
   ActivityIndicator,
   Image,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { FileSystemUploadType } from 'expo-file-system/legacy';
 
 import { useAuthStore } from '@/stores/auth.store';
+import { useProfilePanelStore } from '@/stores/profile-panel.store';
 import { userService } from '@/services/user.service';
 import { Spacing } from '@/constants/theme';
 import { CameraIcon } from '@/components/icons';
 import { SERVER_HOST } from '@/services/api';
 import { tokenStore } from '@/services/token';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /* ── Chevron ── */
 function ChevronRight() {
@@ -75,7 +82,13 @@ const rowStyles = StyleSheet.create({
   actionText: { fontSize: 16, color: '#60646C', fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }) },
 });
 
-export default function ProfileDetailScreen() {
+interface Props {
+  /** 动画进度 0→1（由父层控制，用于从右往左平移） */
+  animValue: Animated.Value;
+}
+
+export default function ProfileDetailPanel({ animValue }: Props) {
+  const close = useProfilePanelStore((s) => s.close);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const displayName = user?.display_name ?? '未设置名称';
@@ -160,125 +173,132 @@ export default function ProfileDetailScreen() {
     }
   };
 
-  // 用 avatar_url 末尾随机字符串作为 cache-busting key，确保换头像后 URL 必然不同
   const avatarCacheKey = user?.avatar_url?.slice(-8) ?? '0';
   const avatarUrl = user?.avatar_url && user?.id
     ? `http://121.41.31.221:8001/api/v1/users/avatars/${user.id}?v=${avatarCacheKey}`
     : null;
 
+  /* ── 平移动画：从右往左滑入 ── */
+  const translateX = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SCREEN_WIDTH, 0],
+  });
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <Text style={styles.topTitle}>设置</Text>
-        <Pressable onPress={() => router.back()} style={styles.backCircle}>
-          <Text style={styles.backArrow}>{'‹'}</Text>
-        </Pressable>
-      </View>
+    <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX }], zIndex: 200, elevation: 200 }]}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <Text style={styles.topTitle}>设置</Text>
+          <Pressable onPress={close} style={styles.backCircle}>
+            <Text style={styles.backArrow}>{'‹'}</Text>
+          </Pressable>
+        </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-        {/* 个人信息卡片 */}
-        <View style={styles.profileCard}>
-          {/* 头像 — 带相机图标 */}
-          <Pressable style={rowStyles.row} onPress={() => setAvatarPicker(true)}>
-            <Text style={rowStyles.label}>头像</Text>
-            <View style={styles.avatarWrap}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {(displayName[0] ?? '?').toUpperCase()}
-                  </Text>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+          {/* 个人信息卡片 */}
+          <View style={styles.profileCard}>
+            {/* 头像 — 带相机图标 */}
+            <Pressable style={rowStyles.row} onPress={() => setAvatarPicker(true)}>
+              <Text style={rowStyles.label}>头像</Text>
+              <View style={styles.avatarWrap}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>
+                      {(displayName[0] ?? '?').toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.cameraBadge}>
+                  <CameraIcon size={12} />
                 </View>
-              )}
-              <View style={styles.cameraBadge}>
-                <CameraIcon size={12} />
               </View>
-            </View>
+            </Pressable>
+
+            <View style={styles.cardDivider} />
+
+            {/* 昵称 */}
+            <Pressable style={rowStyles.row} onPress={openNameEdit}>
+              <Text style={rowStyles.label}>昵称</Text>
+              <Text style={rowStyles.value}>{displayName}</Text>
+            </Pressable>
+
+            <View style={styles.cardDivider} />
+
+            {/* UID */}
+            <InfoRow label="UID" value={userId} />
+          </View>
+
+          {/* 绑定信息卡片 */}
+          <View style={styles.bindCard}>
+            <InfoRow label="手机号" action="去绑定" />
+            <View style={styles.cardDivider} />
+            <InfoRow label="微信" action="去绑定" />
+            <View style={styles.cardDivider} />
+            <InfoRow label="邮箱" action="去绑定" />
+          </View>
+        </ScrollView>
+
+        {/* 昵称编辑弹窗 */}
+        <Modal visible={nameModal} transparent animationType="fade">
+          <Pressable style={styles.overlayCenter} onPress={() => setNameModal(false)}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <Text style={styles.modalTitle}>修改昵称</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editValue}
+                onChangeText={setEditValue}
+                placeholder="输入新昵称"
+                placeholderTextColor="#9CA3AF"
+                autoFocus
+              />
+              <View style={styles.modalActions}>
+                <Pressable style={styles.modalCancel} onPress={() => setNameModal(false)}>
+                  <Text style={styles.modalCancelText}>取消</Text>
+                </Pressable>
+                <Pressable style={[styles.modalSave, saving && { opacity: 0.5 }]} onPress={handleNameSave} disabled={saving}>
+                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.modalSaveText}>保存</Text>}
+                </Pressable>
+              </View>
+            </Pressable>
           </Pressable>
+        </Modal>
 
-          <View style={styles.cardDivider} />
+        {/* 头像选取弹窗 */}
+        <Modal visible={avatarPicker} transparent animationType="slide">
+          <Pressable style={styles.overlay} onPress={() => setAvatarPicker(false)}>
+            <Pressable style={styles.avatarSheet} onPress={() => {}}>
+              {/* 头像大图 */}
+              <View style={styles.avatarLarge}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarLargeImg} />
+                ) : (
+                  <View style={styles.avatarLargePlaceholder}>
+                    <Text style={styles.avatarLargeText}>
+                      {(displayName[0] ?? '?').toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
 
-          {/* 昵称 */}
-          <Pressable style={rowStyles.row} onPress={openNameEdit}>
-            <Text style={rowStyles.label}>昵称</Text>
-            <Text style={rowStyles.value}>{displayName}</Text>
-          </Pressable>
-
-          <View style={styles.cardDivider} />
-
-          {/* UID */}
-          <InfoRow label="UID" value={userId} />
-        </View>
-
-        {/* 绑定信息卡片 */}
-        <View style={styles.bindCard}>
-          <InfoRow label="手机号" action="去绑定" />
-          <View style={styles.cardDivider} />
-          <InfoRow label="微信" action="去绑定" />
-          <View style={styles.cardDivider} />
-          <InfoRow label="邮箱" action="去绑定" />
-        </View>
-      </ScrollView>
-
-      {/* 昵称编辑弹窗 */}
-      <Modal visible={nameModal} transparent animationType="fade">
-        <Pressable style={styles.overlayCenter} onPress={() => setNameModal(false)}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>修改昵称</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editValue}
-              onChangeText={setEditValue}
-              placeholder="输入新昵称"
-              placeholderTextColor="#9CA3AF"
-              autoFocus
-            />
-            <View style={styles.modalActions}>
-              <Pressable style={styles.modalCancel} onPress={() => setNameModal(false)}>
-                <Text style={styles.modalCancelText}>取消</Text>
+              {/* 操作按钮 */}
+              <Pressable style={styles.pickBtn} onPress={changeAvatar}>
+                <Text style={styles.pickBtnText}>修改头像</Text>
               </Pressable>
-              <Pressable style={[styles.modalSave, saving && { opacity: 0.5 }]} onPress={handleNameSave} disabled={saving}>
-                {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.modalSaveText}>保存</Text>}
+              <Pressable style={[styles.pickBtn, styles.pickBtnSecondary]} onPress={saveAvatar} disabled={saving}>
+                <Text style={styles.pickBtnTextSecondary}>保存头像</Text>
               </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
 
-      {/* 头像选取弹窗 */}
-      <Modal visible={avatarPicker} transparent animationType="slide">
-        <Pressable style={styles.overlay} onPress={() => setAvatarPicker(false)}>
-          <Pressable style={styles.avatarSheet} onPress={() => {}}>
-            {/* 头像大图 */}
-            <View style={styles.avatarLarge}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarLargeImg} />
-              ) : (
-                <View style={styles.avatarLargePlaceholder}>
-                  <Text style={styles.avatarLargeText}>
-                    {(displayName[0] ?? '?').toUpperCase()}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* 操作按钮 */}
-            <Pressable style={styles.pickBtn} onPress={changeAvatar}>
-              <Text style={styles.pickBtnText}>修改头像</Text>
-            </Pressable>
-            <Pressable style={[styles.pickBtn, styles.pickBtnSecondary]} onPress={saveAvatar} disabled={saving}>
-              <Text style={styles.pickBtnTextSecondary}>保存头像</Text>
-            </Pressable>
-
-            <Pressable style={styles.pickCancel} onPress={() => setAvatarPicker(false)}>
-              <Text style={styles.pickCancelText}>取消</Text>
+              <Pressable style={styles.pickCancel} onPress={() => setAvatarPicker(false)}>
+                <Text style={styles.pickCancelText}>取消</Text>
+              </Pressable>
             </Pressable>
           </Pressable>
-        </Pressable>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </Animated.View>
   );
 }
 
