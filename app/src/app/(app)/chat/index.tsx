@@ -24,6 +24,7 @@ import { router, useNavigation, type Href } from 'expo-router';
 import Markdown from 'react-native-markdown-display';
 
 import { useChatStore } from '@/stores/chat.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { useDocumentStore } from '@/stores/document.store';
 import { Spacing } from '@/constants/theme';
@@ -87,6 +88,7 @@ const pillStyles = StyleSheet.create({
 
 export default function ChatMainScreen() {
   const theme = useTheme();
+  const user = useAuthStore((s) => s.user);
   const {
     currentSession, currentMessages, isSending, streamingContent, streamError,
     fetchSessions, sendMessage,
@@ -291,7 +293,7 @@ export default function ChatMainScreen() {
       ) : (
         <>
           <View style={styles.greeting}>
-            <Text style={styles.greetingName}>Gavin</Text>
+            <Text style={styles.greetingName}>{user?.display_name || '你来了'}</Text>
             <Text style={styles.greetingQuestion}>今天想聊些什么</Text>
           </View>
           <View style={styles.guidance}>
