@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.models.document import Document
@@ -173,7 +173,7 @@ async def get_user_stats(
     # total_active_days: count distinct dates with messages (UTC+8 aligned)
     active_days = await db.scalar(
         select(func.count(func.distinct(
-            func.date(Message.created_at + text("interval '8 hours'"))
+            cast(Message.created_at + text("interval '8 hours'"), Date)
         ))).select_from(
             Message
         ).join(Session, Message.session_id == Session.id).where(
@@ -188,7 +188,7 @@ async def get_user_stats(
             Session, Message.session_id == Session.id
         ).where(
             Session.user_id == user_id,
-            func.date(Message.created_at + text("interval '8 hours'")) == today,
+            cast(Message.created_at + text("interval '8 hours'"), Date) == today,
         ).limit(1)
     )
     start_day = today if has_today else today - timedelta(days=1)
@@ -201,7 +201,7 @@ async def get_user_stats(
                 Session, Message.session_id == Session.id
             ).where(
                 Session.user_id == user_id,
-                func.date(Message.created_at + text("interval '8 hours'")) == check_date,
+                cast(Message.created_at + text("interval '8 hours'"), Date) == check_date,
             ).limit(1)
         )
         if has_activity:
@@ -248,15 +248,15 @@ async def get_user_activity(
     # ── Message counts per day (UTC+8) ──
     msg_result = await db.execute(
         select(
-            func.date(Message.created_at + tz_offset).label("d"),
+            cast(Message.created_at + tz_offset, Date).label("d"),
             func.count(Message.id).label("c"),
         ).select_from(Message).join(
             Session, Message.session_id == Session.id
         ).where(
             Session.user_id == user_id,
-            func.date(Message.created_at + tz_offset) >= min_date,
-            func.date(Message.created_at + tz_offset) <= today,
-        ).group_by(func.date(Message.created_at + tz_offset))
+            cast(Message.created_at + tz_offset, Date) >= min_date,
+            cast(Message.created_at + tz_offset, Date) <= today,
+        ).group_by(cast(Message.created_at + tz_offset, Date))
     )
     msg_counts: dict[date, int] = {}
     for row in msg_result:
@@ -266,13 +266,13 @@ async def get_user_activity(
     # ── Document (note) counts per day (UTC+8) ──
     doc_result = await db.execute(
         select(
-            func.date(Document.created_at + tz_offset).label("d"),
+            cast(Document.created_at + tz_offset, Date).label("d"),
             func.count(Document.id).label("c"),
         ).where(
             Document.user_id == user_id,
-            func.date(Document.created_at + tz_offset) >= min_date,
-            func.date(Document.created_at + tz_offset) <= today,
-        ).group_by(func.date(Document.created_at + tz_offset))
+            cast(Document.created_at + tz_offset, Date) >= min_date,
+            cast(Document.created_at + tz_offset, Date) <= today,
+        ).group_by(cast(Document.created_at + tz_offset, Date))
     )
     doc_counts: dict[date, int] = {}
     for row in doc_result:
