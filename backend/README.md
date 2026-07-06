@@ -1,8 +1,19 @@
 # Nexus AI Backend
 
-FastAPI 驱动的 AI 对话应用后端，提供 JWT 认证、PostgreSQL/pgvector 向量检索、Redis 缓存、Celery 异步任务。
+FastAPI 驱动的 AI 应用后端，提供 JWT 认证、AI 对话（SSE 流式）、AI 笔记生成、PostgreSQL/pgvector 向量检索、Redis 缓存、MinIO 对象存储。
 
 ---
+
+## 功能模块
+
+| 模块 | 说明 |
+|------|------|
+| 认证 | 注册 / 登录 / Token 刷新（旋转）/ 登出，JWT 双 Token 机制 |
+| 对话 | 多会话管理，SSE 流式对话，接入 DeepSeek LLM |
+| 笔记 | 手动创建 / 从对话 AI 自动生成结构化 Markdown 笔记 |
+| 用户 | 个人信息查询 |
+| 文件 | MinIO (S3 兼容) 对象存储 |
+| 健康检查 | 数据库 + Redis 连通性检测 |
 
 ## 技术栈
 
@@ -12,9 +23,9 @@ FastAPI 驱动的 AI 对话应用后端，提供 JWT 认证、PostgreSQL/pgvecto
 | ORM | SQLAlchemy 2.0 + asyncpg |
 | 数据校验 | Pydantic v2 |
 | 数据库 | PostgreSQL 16 + pgvector |
-| 缓存 / Broker | Redis 7 |
+| 缓存 | Redis 7 |
 | 对象存储 | MinIO (S3 兼容) |
-| 异步任务 | Celery |
+| LLM | DeepSeek (OpenAI 兼容协议，支持流式与非流式) |
 | 数据库迁移 | Alembic (async) |
 | 日志 | structlog (结构化 JSON) |
 | 包管理 | uv (PEP 621) |
@@ -38,7 +49,7 @@ uv sync --dev
 
 # 2. 准备配置文件
 cp .env.example .env
-# 编辑 .env → 修改 JWT_SECRET_KEY 等敏感值
+# 编辑 .env → 修改 JWT_SECRET_KEY 和 OPENAI_API_KEY
 
 # 3. 启动基础设施（PostgreSQL + Redis + MinIO）
 docker compose up -d postgres redis minio
@@ -65,30 +76,45 @@ curl http://localhost:8000/api/v1/health
 ```
 backend/
 ├── src/
-│   ├── main.py                    # FastAPI 应用入口
+│   ├── main.py                    # FastAPI 应用入口（工厂模式）
 │   ├── api/
 │   │   └── v1/
 │   │       ├── __init__.py        # 路由聚合（/api/v1/ 前缀）
 │   │       ├── auth.py            # POST /auth/register, login, refresh, logout
 │   │       ├── users.py           # GET /users/me
+│   │       ├── chat.py            # POST /chat（SSE 流式对话）
+│   │       ├── sessions.py        # CRUD /sessions + /sessions/{id}/messages
+│   │       ├── documents.py       # CRUD /documents + POST /documents/generate
 │   │       └── health.py          # GET /health
-│   ├── application/
-│   │   └── auth_service.py        # 认证业务逻辑
-│   ├── domain/
+│   ├── application/               # 业务逻辑层
+│   │   ├── auth_service.py        # 注册/登录/Token 管理
+│   │   ├── chat_service.py        # 对话编排（上下文+LLM+存储）
+│   │   ├── session_service.py     # 会话 CRUD
+│   │   └── document_service.py    # 笔记 CRUD + AI 自动生成
+│   ├── domain/                    # 领域模型
 │   │   ├── models/                # SQLAlchemy ORM 模型
 │   │   │   ├── base.py            # 基类 + UUID/Timestamp Mixin
 │   │   │   ├── user.py
-│   │   │   └── refresh_token.py
+│   │   │   ├── refresh_token.py
+│   │   │   ├── session.py         # 对话会话
+│   │   │   ├── message.py         # 对话消息
+│   │   │   └── document.py        # AI 笔记
 │   │   └── schemas/               # Pydantic 请求/响应模型
 │   │       ├── common.py          # ApiResponse, PaginatedResponse, ErrorDetail
 │   │       ├── auth.py
-│   │       └── user.py
+│   │       ├── user.py
+│   │       ├── chat.py            # ChatRequest, SessionResponse, MessageResponse
+│   │       └── document.py        # CreateNoteRequest, GenerateNoteRequest, NoteOut
 │   └── infra/                     # 基础设施
 │       ├── config.py              # 配置（pydantic-settings, .env 读取）
 │       ├── database.py            # AsyncEngine + session factory
 │       ├── redis.py               # Redis async client
 │       ├── security.py            # JWT 签发/验证 + 密码哈希
-│       └── logging.py             # structlog 配置
+│       ├── logging.py             # structlog 配置
+│       ├── minio_client.py        # MinIO 客户端
+│       └── llm/                   # LLM 接入层
+│           ├── base.py            # LLMProvider 抽象基类
+│           └── deepseek_provider.py  # DeepSeek 实现（流式 + 非流式）
 ├── tests/
 │   ├── conftest.py                # 异步 fixtures（test DB + HTTP client）
 │   ├── test_health.py
@@ -98,14 +124,13 @@ backend/
 │   ├── env.py                     # Async Alembic 环境
 │   ├── script.py.mako             # 迁移模板
 │   └── versions/                  # 迁移脚本
-├── Dockerfile                     # 生产镜像（multi-stage）
-├── Dockerfile.dev                 # 开发镜像（hot reload）
+├── Dockerfile                     # 生产镜像（multi-stage, Python 3.12-slim）
+├── Dockerfile.dev                 # 开发镜像（hot reload, volume 挂载）
 ├── docker-compose.yml             # 本地开发基础设施
 ├── pyproject.toml                 # 项目元数据 + 依赖声明
 ├── uv.lock                        # 依赖版本锁（uv sync 自动生成）
 ├── alembic.ini
 ├── .env.example                   # 环境变量模板
-├── .env                           # 本地配置（不提交）
 ├── .gitignore
 └── README.md
 ```
@@ -146,6 +171,22 @@ docker compose down -v                          # 停止并清除数据
 
 ---
 
+## 架构设计
+
+采用三层架构：
+
+```
+api/v1/  →  application/  →  domain/  +  infra/
+(路由层)    (业务逻辑层)      (模型层)     (基础设施)
+```
+
+- **路由层** 只做参数提取和依赖注入，不包含业务逻辑
+- **业务逻辑层** 编排领域模型和基础设施，实现完整用例
+- **领域层** 定义 ORM 模型和 Pydantic Schema，与框架解耦
+- **基础设施层** 提供数据库、缓存、LLM、安全等底层能力
+
+---
+
 ## API 约定
 
 所有端点前缀 `/api/v1/`，响应格式：
@@ -161,15 +202,61 @@ docker compose down -v                          # 停止并清除数据
 { "code": "invalid_credentials", "message": "邮箱或密码错误", "detail": null }
 ```
 
-### Phase 1 端点
+### 全部端点
+
+#### 认证（auth）
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
 | POST | `/api/v1/auth/register` | 注册 | - |
 | POST | `/api/v1/auth/login` | 登录 | - |
 | POST | `/api/v1/auth/refresh` | 刷新 token | - |
-| POST | `/api/v1/auth/logout` | 登出 | - |
-| GET | `/api/v1/users/me` | 当前用户 | Bearer Token |
+| POST | `/api/v1/auth/logout` | 登出（吊销 refresh_token） | - |
+
+#### 用户（users）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/v1/users/me` | 获取当前用户信息 | Bearer Token |
+
+#### 会话（sessions）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/api/v1/sessions` | 创建新会话 | Bearer Token |
+| GET | `/api/v1/sessions` | 列出所有会话（分页） | Bearer Token |
+| GET | `/api/v1/sessions/{id}` | 获取单个会话 | Bearer Token |
+| DELETE | `/api/v1/sessions/{id}` | 删除会话 | Bearer Token |
+| GET | `/api/v1/sessions/{id}/messages` | 获取会话消息历史（分页） | Bearer Token |
+
+#### 对话（chat）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/api/v1/chat` | 发送消息，SSE 流式返回 | Bearer Token |
+
+Chat 端点使用 Server-Sent Events 协议：
+- `event: token` — 每个文本片段
+- `event: done` — 流结束，含 `{ total_tokens, model, session_id }`
+- `event: error` — 错误信息
+- 如请求中未传 `session_id`，后端自动创建新会话
+
+#### 笔记（documents）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/v1/documents` | 列出所有笔记（分页） | Bearer Token |
+| GET | `/api/v1/documents/{id}` | 获取单篇笔记 | Bearer Token |
+| POST | `/api/v1/documents` | 手动创建笔记 | Bearer Token |
+| DELETE | `/api/v1/documents/{id}` | 删除笔记 | Bearer Token |
+| POST | `/api/v1/documents/generate` | AI 从对话生成笔记 | Bearer Token |
+
+笔记标签：`学习` / `工作` / `想法` / `收藏`
+
+#### 系统
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
 | GET | `/api/v1/health` | 健康检查 | - |
 
 ### JWT 认证
@@ -193,12 +280,25 @@ docker compose down -v                          # 停止并清除数据
 | `REFRESH_TOKEN_EXPIRE_DAYS` | refresh_token 有效期 | `7` |
 | `CORS_ORIGINS` | 允许的前端域名（逗号分隔） | `http://localhost:8081,http://localhost:19006` |
 | `LOG_LEVEL` | 日志级别 (DEBUG/INFO/WARNING) | `DEBUG` |
+| `OPENAI_API_KEY` | LLM API 密钥 | - |
+| `OPENAI_BASE_URL` | LLM API 地址 | `https://api.deepseek.com/v1` |
+| `LLM_DEFAULT_MODEL` | 默认模型 | `deepseek-chat` |
+| `MINIO_ENDPOINT` | MinIO 地址 | `localhost:9000` |
+| `MINIO_ROOT_USER` | MinIO 用户名 | `minioadmin` |
+| `MINIO_ROOT_PASSWORD` | MinIO 密码 | `minioadmin` |
+| `MINIO_BUCKET` | 存储桶名称 | `nexus-files` |
 
 ---
 
-## 迁移到服务器
+## 部署
 
-### Docker 部署（推荐）
+### 通过 GitHub Actions 自动部署
+
+推送到 `main` 分支自动触发（`.github/workflows/deploy.yml`）：
+- **后端**：在 self-hosted runner 上 Docker 构建并重启
+- **前端**：通过 EAS Update 推送 OTA 热更新到 preview 频道
+
+### Docker 部署（手动）
 
 ```bash
 # 1. 准备服务器上的 .env（含真实 JWT_SECRET_KEY）

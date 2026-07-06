@@ -7,8 +7,19 @@
 ## 前置要求
 
 - **Docker Desktop**（Windows 需 v26+）
-- **Node.js**（用于前端 Expo 项目）
+- **Node.js** ≥ 18（用于前端 Expo 项目）
 - 无需本地安装 Python、PostgreSQL、Redis、MinIO
+
+---
+
+## 项目概览
+
+```
+nexus/
+├── app/          # 前端：Expo SDK 56 + React Native 0.85
+├── backend/      # 后端：FastAPI + PostgreSQL + Redis + MinIO + DeepSeek
+└── .github/      # CI/CD：GitHub Actions 自动部署
+```
 
 ---
 
@@ -26,7 +37,16 @@ cd backend
 docker compose up -d
 ```
 
-首次运行会拉取镜像并构建 API 容器。看到 4 个 `✔` 即为成功：
+首次运行会拉取镜像并构建 API 容器。Docker Compose 启动 4 个服务：
+
+| 服务 | 镜像 | 端口 | 说明 |
+|---|---|---|---|
+| `postgres` | `pgvector/pgvector:pg16` | 5432 | PostgreSQL 16 + pgvector 向量扩展 |
+| `redis` | `redis:7-alpine` | 6379 | Redis 7（缓存 / 会话） |
+| `minio` | `minio/minio:latest` | 9000（API）、9001（控制台） | S3 兼容对象存储 |
+| `api` | 本地构建（Dockerfile.dev） | 8001 → 容器内 8000 | FastAPI（热重载） |
+
+看到 4 个 `✔` 即为成功：
 
 ```
 ✔ Container backend-redis-1     Healthy
@@ -68,15 +88,6 @@ Swagger 文档：浏览器打开 `http://localhost:8001/docs`
 
 ## 二、后端服务架构
 
-### 4 个 Docker 服务
-
-| 服务 | 镜像 | 端口 | 说明 |
-|---|---|---|---|
-| `postgres` | `pgvector/pgvector:pg16` | 5432 | PostgreSQL 16 + pgvector |
-| `redis` | `redis:7-alpine` | 6379 | Redis 7 |
-| `minio` | `minio/minio:latest` | 9000（API）、9001（控制台） | 对象存储 |
-| `api` | 本地构建（Dockerfile.dev） | 8001 → 容器内 8000 | FastAPI 热重载 |
-
 ### 热重载
 
 `src/`、`alembic/` 等目录通过 Docker volume 挂载进容器，修改 Python 代码后容器自动重启。
@@ -89,6 +100,15 @@ Swagger 文档：浏览器打开 `http://localhost:8001/docs`
 | Swagger 文档 | `http://localhost:8001/docs` |
 | OpenAPI JSON | `http://localhost:8001/openapi.json` |
 | MinIO 控制台 | `http://localhost:9001`（minioadmin / minioadmin） |
+
+### 三层架构
+
+```
+api/v1/     →  路由层（参数提取、依赖注入）
+application/ →  业务逻辑层（编排模型和基础设施）
+domain/     →  领域层（ORM 模型 + Pydantic Schema）
+infra/      →  基础设施层（数据库、Redis、LLM、安全）
+```
 
 ---
 
@@ -106,7 +126,19 @@ cd app
 npm install
 ```
 
-### 3. 启动 Web 模式
+### 3. 配置 API 地址
+
+在 `app/src/services/api.ts` 中修改 `SERVER_HOST`：
+
+```typescript
+// 本地开发
+export const SERVER_HOST = 'http://localhost:8001';
+
+// 连接内测服务器
+export const SERVER_HOST = 'http://121.41.31.221:8001';
+```
+
+### 4. 启动 Web 模式
 
 ```bash
 npx expo start --web
@@ -114,7 +146,7 @@ npx expo start --web
 
 浏览器会自动打开 `http://localhost:8081`，进入登录页。
 
-### 4. 注册 / 登录
+### 5. 注册 / 登录
 
 - 密码要求：**至少 8 位**
 - 注册成功后自动跳转至聊天页
@@ -125,11 +157,17 @@ npx expo start --web
 
 ### 前端 API 地址
 
-在 `app/src/services/api.ts` 中硬编码了后端地址（绕过 `.env` 加载问题）：
+在 `app/src/services/api.ts` 中：
 
 ```typescript
-const BASE_URL = 'http://localhost:8001/api/v1';
+export const SERVER_HOST = 'http://localhost:8001';
+const BASE_URL = `${SERVER_HOST}/api/v1`;
 ```
+
+Axios 实例自动处理：
+- **请求拦截器**：自动附加 `Authorization: Bearer <access_token>`
+- **响应拦截器**：401 时自动用 refresh_token 换新 access_token 并重试请求
+- **Token 存储**：独立于 Zustand（`src/services/token.ts`），避免循环引用
 
 ### CORS 白名单
 
@@ -143,12 +181,23 @@ CORS_ORIGINS=http://localhost:8081,http://localhost:19006,http://localhost:19000
 
 ### 调试开关
 
-开发时可跳过登录（两个文件需同时改）：
+#### Mock 数据模式
 
-| 文件 | 变量 | 默认值 |
-|---|---|---|
-| `src/app/index.tsx` | `DEBUG_SKIP_AUTH` | `false` |
-| `src/app/(app)/_layout.tsx` | `DEBUG_SKIP_AUTH` | `false` |
+在 `app/src/stores/chat.store.ts` 中：
+
+```typescript
+const USE_MOCKS = true;  // true = 使用本地 mock 数据，无需后端
+```
+
+设为 `true` 后，对话和会话都使用本地 Mock 数据，可脱离后端独立调试前端 UI。
+
+#### 跳过登录
+
+在 `app/src/app/(app)/_layout.tsx` 中：
+
+```typescript
+const DEBUG_SKIP_AUTH = true;  // true = 跳过登录校验
+```
 
 设为 `true` 后直接进入聊天页，无需注册登录。
 
@@ -165,6 +214,9 @@ docker compose ps
 # 查看 API 日志
 docker compose logs -f api
 
+# 查看 PostgreSQL 日志
+docker compose logs -f postgres
+
 # 停止所有服务
 docker compose down
 
@@ -178,6 +230,9 @@ docker compose up -d
 
 # 进入 API 容器调试
 docker compose exec api bash
+
+# 进入 PostgreSQL
+docker compose exec postgres psql -U nexus -d nexus
 ```
 
 ### 前端
@@ -191,6 +246,9 @@ npx expo start --android
 
 # iOS（需 macOS + Xcode）
 npx expo start --ios
+
+# 清除缓存重启
+npx expo start -c
 ```
 
 ---
@@ -251,12 +309,20 @@ ValueError: password cannot be longer than 72 bytes
 一般是后端根本没收到请求。检查：
 
 1. 后端是否在运行：`docker compose ps`
-2. 端口是否通：`Invoke-WebRequest -Uri http://localhost:8001/api/v1/health -TimeoutSec 5`
-3. 前端 API 地址是否正确（检查 `app/src/services/api.ts` 中 `BASE_URL`）
+2. 端口是否通：`curl http://localhost:8001/api/v1/health`
+3. 前端 API 地址是否正确（检查 `app/src/services/api.ts` 中 `SERVER_HOST`）
 
 ### 前端 timeout / network error（Android 真机）
 
-手机上的 `localhost` 指向手机自己。真机调试需将 `BASE_URL` 改为电脑的局域网 IP（如 `http://192.168.1.100:8001/api/v1`）。
+手机上的 `localhost` 指向手机自己。真机调试需将 `SERVER_HOST` 改为电脑的局域网 IP（如 `http://192.168.1.100:8001`）。
+
+### LLM 调用失败
+
+```
+502 Bad Gateway: LLM request failed
+```
+
+检查 `.env` 中的 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL` 是否正确配置。
 
 ---
 
@@ -274,6 +340,8 @@ ValueError: password cannot be longer than 72 bytes
 | 无预置迁移文件 | `alembic/versions/` | 需手动 `revision --autogenerate -m "init"` |
 | 密码校验不一致 | 前端 6 位 vs 后 8 位 | 统一 8 位 |
 | 端口 8000 被 Docker 残留锁死 | `docker-compose.yml` | 改用端口 8001 |
+| API 缺少 chat/sessions/documents 端点 | `src/api/v1/` | 新增 chat.py, sessions.py, documents.py |
+| API 缺少 LLM 接入层 | `src/infra/llm/` | 新增 deepseek_provider.py（流式 + 非流式） |
 
 ---
 
@@ -287,4 +355,9 @@ ValueError: password cannot be longer than 72 bytes
 - `POSTGRES_PASSWORD` — 强密码
 - `MINIO_ROOT_PASSWORD` / `MINIO_SECRET_KEY` — 强密码
 - `CORS_ORIGINS` — 仅填生产域名
-- `OPENAI_API_KEY` — 配置 LLM
+- `OPENAI_API_KEY` — 配置 LLM API 密钥
+
+## 相关文档
+
+- [后端 README](./README.md) — API 端点详情、架构设计
+- [前端 README](../app/README.md) — 前端技术栈、项目结构

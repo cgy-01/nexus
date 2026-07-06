@@ -36,6 +36,7 @@ import {
   MicIcon,
   SendIcon,
   MoreIcon,
+  GenerateNoteIcon,
 } from '@/components/icons';
 
 const iconColor = '#000000';
@@ -225,26 +226,11 @@ export default function ChatMainScreen() {
         <Pressable onPress={openSidebar} style={styles.topBarLeft}>
           <MenuIcon color={iconColor} />
         </Pressable>
-        {!chatStarted && <Text style={styles.brandTitle}>Nexus</Text>}
         <View style={styles.topBarRight}>
           {chatStarted ? (
             <View style={styles.chatPill}>
               <Pressable onPress={handleNewChat}>
                 <EditIcon color={iconColor} />
-              </Pressable>
-              <Pressable
-                onPress={handleOrganizeNote}
-                disabled={isGenerating}
-                style={({ pressed }) => [
-                  styles.organizeButton,
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                {isGenerating ? (
-                  <ActivityIndicator size="small" color="#0066FF" />
-                ) : (
-                  <Text style={styles.organizeButtonText}>整理</Text>
-                )}
               </Pressable>
               <Pressable>
                 <MoreIcon />
@@ -306,28 +292,51 @@ export default function ChatMainScreen() {
         </>
       )}
 
-      {/* Input Bar */}
+      {/* Input Bar & Action Button */}
       <Animated.View
-        style={[styles.inputBar, { transform: [{ translateY: Animated.multiply(keyboardAnim, -1) }] }]}
+        style={[styles.inputBarContainer, { transform: [{ translateY: Animated.multiply(keyboardAnim, -1) }] }]}
       >
-        <Pressable style={styles.modelButton}>
-          <ModelIcon color={iconColor} />
-        </Pressable>
-        <TextInput
-          style={styles.textInput}
-          placeholder="问问 DeepSeek"
-          placeholderTextColor="rgba(0,0,0,0.55)"
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          textAlignVertical="center"
-        />
-        <Pressable
-          style={({ pressed }) => [styles.sendButton, pressed && styles.sendPressed]}
-          onPress={hasInput ? handleSend : undefined}
-        >
-          {hasInput ? <SendIcon /> : <MicIcon />}
-        </Pressable>
+        {chatStarted && (
+          <Pressable
+            onPress={handleOrganizeNote}
+            disabled={isGenerating}
+            style={({ pressed }) => [
+              styles.generateNoteButton,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            {isGenerating ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <>
+                <View style={{ marginTop: 0.5 }}>
+                  <GenerateNoteIcon size={14.5} color="#000000" />
+                </View>
+                <Text style={styles.generateNoteText}>生成笔记</Text>
+              </>
+            )}
+          </Pressable>
+        )}
+        <View style={styles.inputBar}>
+          <Pressable style={styles.modelButton}>
+            <ModelIcon color={iconColor} />
+          </Pressable>
+          <TextInput
+            style={styles.textInput}
+            placeholder="问问 DeepSeek"
+            placeholderTextColor="rgba(0,0,0,0.55)"
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            textAlignVertical="center"
+          />
+          <Pressable
+            style={({ pressed }) => [styles.sendButton, pressed && styles.sendPressed]}
+            onPress={hasInput ? handleSend : undefined}
+          >
+            {hasInput ? <SendIcon /> : <MicIcon />}
+          </Pressable>
+        </View>
       </Animated.View>
     </SafeAreaView>
   );
@@ -359,16 +368,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)',
     borderRadius: 21, paddingHorizontal: Spacing.two + 4, height: 42,
   },
-  organizeButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  organizeButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#0066FF',
-    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
-  },
   brandTitle: {
     flex: 1, textAlign: 'center', fontSize: 24, fontWeight: '400', color: '#000000', lineHeight: 30,
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
@@ -392,10 +391,33 @@ const styles = StyleSheet.create({
   errorText: { color: '#856404', fontSize: 13, fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }) },
 
   /* Input Bar */
-  inputBar: {
+  inputBarContainer: {
     position: 'absolute', bottom: 0, left: '5%', right: '5%',
+    alignItems: 'stretch',
+  },
+  generateNoteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 6,
+    alignSelf: 'flex-start',
+  },
+  generateNoteText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 13,
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  inputBar: {
+    width: '100%',
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#ffffff', borderRadius: 30,
+    backgroundColor: '#ffffff', borderRadius: 20,
     borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)',
     paddingHorizontal: Spacing.three, paddingVertical: Spacing.two,
   },
