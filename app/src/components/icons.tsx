@@ -145,3 +145,12 @@ export function GenerateNoteIcon({ size = 16, color = '#000000' }: { size?: numb
     </Svg>
   );
 }
+
+/* ── 向下展开 ── */
+export function ChevronDownIcon({ size = 14, color = '#000000' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 9L12 15L18 9" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}

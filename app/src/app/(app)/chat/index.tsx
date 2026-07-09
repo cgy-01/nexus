@@ -27,6 +27,7 @@ import { useChatStore } from '@/stores/chat.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { useDocumentStore } from '@/stores/document.store';
+import type { NoteType } from '@/services/document.service';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -37,9 +38,17 @@ import {
   SendIcon,
   MoreIcon,
   GenerateNoteIcon,
+  ChevronDownIcon,
 } from '@/components/icons';
 
 const iconColor = '#000000';
+
+const noteTypeOptions: { label: string; value: NoteType }[] = [
+  { label: '通用笔记', value: 'general' },
+  { label: '公众号推文', value: 'wechat_article' },
+  { label: '视频口播稿', value: 'video_script' },
+  { label: '小红书文案', value: 'xiaohongshu' },
+];
 
 /* ── Markdown 样式 ── */
 const mdStyles = {
@@ -99,6 +108,7 @@ export default function ChatMainScreen() {
 
   const [inputText, setInputText] = useState('');
   const [chatStarted, setChatStarted] = useState(false);
+  const [noteMenuOpen, setNoteMenuOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const hasInput = inputText.trim().length > 0;
 
@@ -114,8 +124,9 @@ export default function ChatMainScreen() {
   }, [currentSession?.id, currentMessages.length > 0]);
 
   /* ── 整理笔记 ── */
-  const handleOrganizeNote = useCallback(async () => {
+  const handleOrganizeNote = useCallback(async (noteType: NoteType) => {
     if (isGenerating || currentMessages.length === 0) return;
+    setNoteMenuOpen(false);
 
     // 1. 直接在 store 插入"生成中"占位卡片（同步，先于导航生效）
     const optimisticId = `note-gen-${Date.now()}`;
@@ -143,6 +154,7 @@ export default function ChatMainScreen() {
     generateNoteFromChat(
       {
         messages: currentMessages.map((m) => ({ role: m.role, content: m.content })),
+        note_type: noteType,
       },
       optimisticId,
     );
@@ -153,6 +165,7 @@ export default function ChatMainScreen() {
     if (!hasInput || isSending) return;
     const text = inputText.trim();
     setInputText('');
+    setNoteMenuOpen(false);
 
     if (!chatStarted) {
       setChatStarted(true);
@@ -167,6 +180,7 @@ export default function ChatMainScreen() {
   const handleNewChat = useCallback(() => {
     setChatStarted(false);
     setInputText('');
+    setNoteMenuOpen(false);
     // 清空 store 中的当前会话
     useChatStore.setState({ currentSession: null, currentMessages: [], streamingContent: '' });
   }, []);
@@ -297,25 +311,50 @@ export default function ChatMainScreen() {
         style={[styles.inputBarContainer, { transform: [{ translateY: Animated.multiply(keyboardAnim, -1) }] }]}
       >
         {chatStarted && (
-          <Pressable
-            onPress={handleOrganizeNote}
-            disabled={isGenerating}
-            style={({ pressed }) => [
-              styles.generateNoteButton,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            {isGenerating ? (
-              <ActivityIndicator size="small" color="#000000" />
-            ) : (
-              <>
-                <View style={{ marginTop: 0.5 }}>
-                  <GenerateNoteIcon size={14.5} color="#000000" />
-                </View>
-                <Text style={styles.generateNoteText}>生成笔记</Text>
-              </>
+          <View style={styles.generateNoteWrap}>
+            {noteMenuOpen && !isGenerating && (
+              <View style={styles.noteTypeMenu}>
+                {noteTypeOptions.map((option, index) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => handleOrganizeNote(option.value)}
+                    style={({ pressed }) => [
+                      styles.noteTypeItem,
+                      index > 0 && styles.noteTypeItemBorder,
+                      pressed && styles.noteTypeItemPressed,
+                    ]}
+                  >
+                    <Text style={styles.noteTypeText}>{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
             )}
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                if (!isGenerating && currentMessages.length > 0) {
+                  setNoteMenuOpen((open) => !open);
+                }
+              }}
+              disabled={isGenerating || currentMessages.length === 0}
+              style={({ pressed }) => [
+                styles.generateNoteButton,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              {isGenerating ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <>
+                  <View style={{ marginTop: 0.5 }}>
+                    <GenerateNoteIcon size={14.5} color="#000000" />
+                  </View>
+                  <Text style={styles.generateNoteText}>生成笔记</Text>
+                  <View style={styles.generateNoteDivider} />
+                  <ChevronDownIcon size={13} color="#000000" />
+                </>
+              )}
+            </Pressable>
+          </View>
         )}
         <View style={styles.inputBar}>
           <Pressable style={styles.modelButton}>
@@ -395,23 +434,71 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: '5%', right: '5%',
     alignItems: 'stretch',
   },
+  generateNoteWrap: {
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+    position: 'relative',
+    zIndex: 10,
+  },
   generateNoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
     borderRadius: 8,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    marginBottom: 6,
     alignSelf: 'flex-start',
   },
   generateNoteText: {
     color: '#000000',
     fontWeight: '700',
     fontSize: 13,
+    marginLeft: 4,
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  generateNoteDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(0,0,0,0.16)',
+    marginLeft: 8,
+    marginRight: 6,
+  },
+  noteTypeMenu: {
+    position: 'absolute',
+    left: 0,
+    bottom: 34,
+    minWidth: 158,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  noteTypeItem: {
+    minHeight: 38,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
+  },
+  noteTypeItemBorder: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  noteTypeItemPressed: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  noteTypeText: {
+    color: '#000000',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
   },
   inputBar: {

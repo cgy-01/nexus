@@ -1,32 +1,16 @@
-"""Document service — CRUD + AI-powered note generation from chat."""
-
-import uuid
+"""文档服务：笔记 CRUD 与 AI 生成。"""
 
 import structlog
 from fastapi import HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.note_prompts import get_note_skill_prompt
 from src.domain.models.document import Document
 from src.domain.schemas.document import GenerateNoteRequest
 from src.infra.llm.deepseek_provider import DeepSeekProvider
 
 logger = structlog.get_logger()
-
-NOTE_SYSTEM_PROMPT = (
-    "你是一个知识整理专家。用户会提供一段对话记录，请你将其整理为结构化的笔记。\n\n"
-    "要求：\n"
-    "1. 用 Markdown 格式输出\n"
-    "2. 提取对话中的关键话题、核心观点和重要结论\n"
-    "3. 按主题组织内容，使用标题层级\n"
-    "4. 保留原文中的关键数据和引用\n"
-    "5. 最后附上一个合适的标签（从以下选一：学习、工作、想法、收藏）\n\n"
-    "输出格式：\n"
-    "## 标题\n"
-    "...正文...\n"
-    "---\n"
-    "标签: [标签名]"
-)
 
 _provider: DeepSeekProvider | None = None
 
@@ -39,7 +23,7 @@ def _get_provider() -> DeepSeekProvider:
 
 
 class DocumentService:
-    """Handles document CRUD and AI-powered generation."""
+    """处理笔记 CRUD 和 AI 生成。"""
 
     # ------------------------------------------------------------------
     # CRUD
@@ -53,7 +37,7 @@ class DocumentService:
         page: int = 1,
         page_size: int = 50,
     ) -> dict:
-        """Return paginated documents for a user, newest first."""
+        """按更新时间倒序返回用户笔记分页。"""
         offset = (page - 1) * page_size
 
         count_q = (
@@ -83,7 +67,7 @@ class DocumentService:
     async def get_document(
         cls, db: AsyncSession, user_id: str, doc_id: str
     ) -> Document:
-        """Get a single document, ensuring ownership."""
+        """获取单篇笔记，并校验归属。"""
         q = select(Document).where(
             Document.id == doc_id, Document.user_id == user_id
         )
@@ -101,7 +85,7 @@ class DocumentService:
         content: str = "",
         tag: str = "学习",
     ) -> Document:
-        """Manually create a document."""
+        """手动创建笔记。"""
         doc = Document(
             user_id=user_id,
             title=title,
@@ -118,7 +102,7 @@ class DocumentService:
     async def delete_document(
         cls, db: AsyncSession, user_id: str, doc_id: str
     ) -> None:
-        """Delete a document owned by the user."""
+        """删除用户自己的笔记。"""
         doc = await cls.get_document(db, user_id, doc_id)
         await db.delete(doc)
         await db.commit()
@@ -134,15 +118,13 @@ class DocumentService:
         user_id: str,
         req: GenerateNoteRequest,
     ) -> Document:
-        """Generate a structured note from chat messages using LLM."""
-        # 1. Build the prompt from messages
+        """使用 LLM 从聊天消息生成结构化笔记。"""
         conversation = _format_conversation(req.messages)
         llm_messages = [
-            {"role": "system", "content": NOTE_SYSTEM_PROMPT},
+            {"role": "system", "content": get_note_skill_prompt(req.note_type)},
             {"role": "user", "content": f"请整理以下对话：\n\n{conversation}"},
         ]
 
-        # 2. Call LLM (non-streaming — 一次返回完整笔记)
         provider = _get_provider()
         try:
             full_content = await provider.chat_sync(llm_messages)
@@ -153,12 +135,10 @@ class DocumentService:
                 detail="LLM request failed — please try again",
             ) from exc
 
-        # 3. Parse title, tag, and preview from the LLM output
         title = _extract_title(full_content)
         tag = _extract_tag(full_content)
         preview = _make_preview(full_content)
 
-        # 4. Create the document
         doc = Document(
             user_id=user_id,
             title=title,
@@ -176,17 +156,13 @@ class DocumentService:
             doc_id=str(doc.id),
             title=title,
             tag=tag,
+            note_type=req.note_type,
         )
         return doc
 
 
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
-
-
 def _format_conversation(messages: list[dict]) -> str:
-    """Format a list of {role, content} dicts into a readable transcript."""
+    """将 {role, content} 消息列表格式化成可读转写文本。"""
     lines: list[str] = []
     for m in messages:
         role_label = {"user": "👤 用户", "assistant": "🤖 AI", "system": "📋 系统"}.get(
@@ -197,14 +173,13 @@ def _format_conversation(messages: list[dict]) -> str:
 
 
 def _extract_title(content: str) -> str:
-    """Extract a title from the first heading in the generated content."""
+    """从生成内容的第一个标题中提取笔记标题。"""
     for line in content.split("\n"):
         stripped = line.strip()
         if stripped.startswith("## "):
             return stripped[3:].strip()
         if stripped.startswith("# "):
             return stripped[2:].strip()
-    # Fallback: first non-empty line, truncated
     for line in content.split("\n"):
         stripped = line.strip()
         if stripped and not stripped.startswith("---"):
@@ -213,7 +188,7 @@ def _extract_title(content: str) -> str:
 
 
 def _extract_tag(content: str) -> str:
-    """Extract the tag from the '标签: xxx' marker."""
+    """从「标签: xxx」标记中提取笔记标签。"""
     valid_tags = {"学习", "工作", "想法", "收藏"}
     for line in content.split("\n"):
         stripped = line.strip()
@@ -225,8 +200,7 @@ def _extract_tag(content: str) -> str:
 
 
 def _make_preview(content: str) -> str:
-    """Create a short preview by stripping markdown and truncating."""
-    # Remove headings, code blocks, and horizontal rules
+    """移除 Markdown 标记并生成短预览。"""
     cleaned = []
     for line in content.split("\n"):
         stripped = line.strip()

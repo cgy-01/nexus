@@ -7,8 +7,11 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api';
 import type { Note, CreateNoteRequest } from '@/types/document';
 import type { Message } from '@/types/chat';
 
+export type NoteType = 'general' | 'wechat_article' | 'video_script' | 'xiaohongshu';
+
 export interface GenerateNoteRequest {
   messages: Pick<Message, 'role' | 'content'>[];
+  note_type?: NoteType;
 }
 
 export const documentService = {

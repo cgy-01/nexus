@@ -1,22 +1,27 @@
-"""Document / Note schemas — request and response shapes."""
+"""文档/笔记接口的数据结构。"""
 
 from datetime import datetime
-from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.application.note_prompts import NoteType
+
 
 class GenerateNoteRequest(BaseModel):
-    """Request body for generating a note from chat messages."""
+    """从聊天消息生成笔记的请求体。"""
 
     messages: list[dict] = Field(
         default_factory=list,
-        description="List of {role, content} dicts from the chat session",
+        description="聊天会话中的 {role, content} 消息列表",
+    )
+    note_type: NoteType = Field(
+        default="general",
+        description="笔记生成类型：general、wechat_article、video_script、xiaohongshu",
     )
 
 
 class NoteOut(BaseModel):
-    """Note returned to the frontend."""
+    """返回给前端的笔记。"""
 
     id: str
     title: str
@@ -33,12 +38,12 @@ class NoteOut(BaseModel):
     @field_validator("id", mode="before")
     @classmethod
     def coerce_id(cls, v: object) -> str:
-        """Coerce UUID objects to string for JSON serialization."""
+        """将 UUID 转成字符串，便于 JSON 序列化。"""
         return str(v)
 
 
 class CreateNoteRequest(BaseModel):
-    """Request body for manually creating a note."""
+    """手动创建笔记的请求体。"""
 
     title: str = Field(..., min_length=1, max_length=255)
     content: str = ""
