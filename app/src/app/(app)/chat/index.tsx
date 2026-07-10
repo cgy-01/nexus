@@ -18,6 +18,7 @@ import {
   Keyboard,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useNavigation, type Href } from 'expo-router';
@@ -28,6 +29,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { useDocumentStore } from '@/stores/document.store';
 import type { NoteType } from '@/services/document.service';
+import type { SearchMetadata, SearchSource } from '@/types/chat';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -80,6 +82,54 @@ function GuidancePill({ text, borderColor, onPress }: { text: string; borderColo
   );
 }
 
+function getSearchMetadata(metadata: Record<string, unknown>): SearchMetadata | null {
+  const value = metadata.search;
+  if (!value || typeof value !== 'object') return null;
+  const search = value as Partial<SearchMetadata>;
+  if (!Array.isArray(search.sources)) return null;
+  return search as SearchMetadata;
+}
+
+function SearchSources({ search }: { search: SearchMetadata | null }) {
+  if (!search) return null;
+
+  if (search.sources.length === 0) {
+    const text = search.status === 'empty'
+      ? '联网搜索未找到可用来源'
+      : '联网搜索不可用，已使用模型直接回答';
+    return (
+      <View style={sourceStyles.wrap}>
+        <Text style={sourceStyles.status}>{text}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={sourceStyles.wrap}>
+      <Text style={sourceStyles.title}>来源</Text>
+      {search.sources.slice(0, 5).map((source: SearchSource, index) => (
+        <Pressable
+          key={`${source.url}-${index}`}
+          style={({ pressed }) => [sourceStyles.item, pressed && { opacity: 0.7 }]}
+          onPress={() => Linking.openURL(source.url)}
+        >
+          <Text style={sourceStyles.itemTitle} numberOfLines={2}>
+            [{index + 1}] {source.title}
+          </Text>
+          <Text style={sourceStyles.site} numberOfLines={1}>
+            {source.site_name || source.url}
+          </Text>
+          {!!source.snippet && (
+            <Text style={sourceStyles.snippet} numberOfLines={2}>
+              {source.snippet}
+            </Text>
+          )}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 const pillStyles = StyleSheet.create({
   pill: {
     backgroundColor: '#ffffff',
@@ -109,6 +159,7 @@ export default function ChatMainScreen() {
   const [inputText, setInputText] = useState('');
   const [chatStarted, setChatStarted] = useState(false);
   const [noteMenuOpen, setNoteMenuOpen] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const hasInput = inputText.trim().length > 0;
 
@@ -170,11 +221,11 @@ export default function ChatMainScreen() {
     if (!chatStarted) {
       setChatStarted(true);
       // 不预先创建会话，后端 chat 接口会自动创建
-      await sendMessage(undefined, text);
+      await sendMessage(undefined, text, searchEnabled);
     } else if (currentSession) {
-      await sendMessage(currentSession.id, text);
+      await sendMessage(currentSession.id, text, searchEnabled);
     }
-  }, [hasInput, isSending, chatStarted, currentSession, inputText, sendMessage]);
+  }, [hasInput, isSending, chatStarted, currentSession, inputText, searchEnabled, sendMessage]);
 
   /* ── 新建对话 ── */
   const handleNewChat = useCallback(() => {
@@ -229,8 +280,13 @@ export default function ChatMainScreen() {
 
   /* ── 合并消息用于渲染 ── */
   const displayMessages = [
-    ...currentMessages.map((m) => ({ key: m.id, role: m.role, content: m.content })),
-    ...(streamingContent ? [{ key: 'streaming', role: 'assistant' as const, content: streamingContent }] : []),
+    ...currentMessages.map((m) => ({
+      key: m.id,
+      role: m.role,
+      content: m.content,
+      search: getSearchMetadata(m.metadata),
+    })),
+    ...(streamingContent ? [{ key: 'streaming', role: 'assistant' as const, content: streamingContent, search: null }] : []),
   ];
 
   const pageContent = (
@@ -285,6 +341,7 @@ export default function ChatMainScreen() {
               ) : (
                 <View key={msg.key} style={styles.llmMessage}>
                   <Markdown style={mdStyles}>{msg.content}</Markdown>
+                  <SearchSources search={msg.search} />
                 </View>
               ),
             )}
@@ -359,6 +416,20 @@ export default function ChatMainScreen() {
         <View style={styles.inputBar}>
           <Pressable style={styles.modelButton}>
             <ModelIcon color={iconColor} />
+          </Pressable>
+          <Pressable
+            onPress={() => setSearchEnabled((enabled) => !enabled)}
+            style={[
+              styles.searchToggle,
+              searchEnabled && styles.searchToggleActive,
+            ]}
+          >
+            <Text style={[
+              styles.searchToggleText,
+              searchEnabled && styles.searchToggleTextActive,
+            ]}>
+              联网
+            </Text>
           </Pressable>
           <TextInput
             style={styles.textInput}
@@ -512,6 +583,31 @@ const styles = StyleSheet.create({
     width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
     marginRight: Spacing.two,
   },
+  searchToggle: {
+    height: 30,
+    paddingHorizontal: 9,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.two,
+    backgroundColor: '#ffffff',
+  },
+  searchToggleActive: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
+  },
+  searchToggleText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#000000',
+    fontWeight: '600',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  searchToggleTextActive: {
+    color: '#ffffff',
+  },
   textInput: {
     flex: 1,
     fontSize: 17, lineHeight: 24, color: '#000000',
@@ -531,4 +627,53 @@ const bubbleStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.06)',
   },
   textOwn: { fontSize: 18, lineHeight: 29, color: '#000000', fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }) },
+});
+
+const sourceStyles = StyleSheet.create({
+  wrap: {
+    marginTop: 10,
+    gap: 8,
+  },
+  title: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(0,0,0,0.55)',
+    fontWeight: '700',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  item: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#ffffff',
+  },
+  itemTitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#000000',
+    fontWeight: '700',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  site: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 17,
+    color: 'rgba(0,0,0,0.5)',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  snippet: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(0,0,0,0.68)',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  status: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: 'rgba(0,0,0,0.5)',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
 });

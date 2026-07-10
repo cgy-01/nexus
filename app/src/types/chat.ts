@@ -12,6 +12,28 @@ export interface Message {
   created_at: string;
 }
 
+export interface SearchSource {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+  region: string;
+  site_name?: string | null;
+  site_icon?: string | null;
+  published_at?: string | null;
+  score?: number | null;
+}
+
+export interface SearchMetadata {
+  enabled: boolean;
+  provider?: string | null;
+  region: string;
+  status: 'success' | 'empty' | 'failed' | 'disabled';
+  sources: SearchSource[];
+  error?: string | null;
+  log_id?: string | null;
+}
+
 export interface Session {
   id: string;
   title: string;
@@ -25,6 +47,8 @@ export interface Session {
 export interface ChatRequest {
   session_id?: string;
   content: string;
+  enable_search?: boolean;
+  search_region?: 'mainland' | 'auto';
 }
 
 /** SSE 事件类型 */
@@ -36,7 +60,10 @@ export interface SSEDoneEvent {
   total_tokens: number;
   model: string;
   session_id: string;
+  search?: SearchMetadata;
 }
+
+export interface SSESourcesEvent extends SearchMetadata {}
 
 export interface SSEErrorEvent {
   code: string;

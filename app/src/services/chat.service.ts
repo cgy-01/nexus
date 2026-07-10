@@ -50,6 +50,10 @@ export const chatService = {
     if (req.session_id) {
       body.session_id = req.session_id;
     }
+    if (req.enable_search) {
+      body.enable_search = req.enable_search;
+      body.search_region = req.search_region ?? 'mainland';
+    }
 
     const response = await fetch(`${BASE_URL}/chat`, {
       method: 'POST',

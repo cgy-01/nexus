@@ -8,7 +8,7 @@
 import { create } from 'zustand';
 import { chatService } from '@/services/chat.service';
 import { tokenStore } from '@/services/token';
-import type { Message, Session } from '@/types/chat';
+import type { Message, SearchMetadata, Session } from '@/types/chat';
 
 /* ═══════════════════════════════════════════════════════════════
    调试开关：true = 使用本地 mock 数据，无需后端
@@ -180,7 +180,7 @@ interface ChatState {
   deleteSession: (id: string) => Promise<void>;
   fetchMessages: (sessionId: string) => Promise<void>;
   setCurrentSession: (session: Session | null) => void;
-  sendMessage: (sessionId: string | undefined, content: string) => Promise<void>;
+  sendMessage: (sessionId: string | undefined, content: string, enableSearch?: boolean) => Promise<void>;
 
   addStreamToken: (token: string) => void;
   finalizeStream: (totalTokens?: number) => void;
@@ -293,7 +293,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   /* ── 消息发送 + SSE ── */
 
-  sendMessage: async (sessionId, content) => {
+  sendMessage: async (sessionId, content, enableSearch = false) => {
     const resolvedId: string = sessionId || 'pending';
 
     // 追加用户消息
@@ -353,7 +353,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       const response = await chatService.sendMessageStream(
-        { session_id: sessionId, content },
+        {
+          session_id: sessionId,
+          content,
+          enable_search: enableSearch,
+          search_region: 'mainland',
+        },
         token,
       );
 
@@ -364,6 +369,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let buffer = '';
       let finalTokens = 0;
       let newSessionId: string | null = null;
+      let searchMeta: SearchMetadata | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -382,10 +388,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 set((state) => ({
                   streamingContent: state.streamingContent + payload.content,
                 }));
+              } else if ('sources' in payload && 'status' in payload) {
+                searchMeta = payload as SearchMetadata;
               } else if ('total_tokens' in payload) {
                 finalTokens = payload.total_tokens;
                 if (payload.session_id) {
                   newSessionId = payload.session_id;
+                }
+                if (payload.search) {
+                  searchMeta = payload.search as SearchMetadata;
                 }
               } else if ('code' in payload) {
                 throw new Error(payload.message);
@@ -410,7 +421,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         role: 'assistant',
         content: get().streamingContent,
         token_count: finalTokens,
-        metadata: {},
+        metadata: searchMeta ? { search: searchMeta } : {},
         created_at: new Date().toISOString(),
       };
 

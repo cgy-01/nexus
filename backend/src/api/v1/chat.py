@@ -30,27 +30,20 @@ async def _sse_event_generator(
         await db.flush()
         session_id = str(session.id)
 
-    total_tokens = 0
-
     try:
-        async for token in ChatService.stream_chat(
+        async for item in ChatService.stream_chat(
             db,
             user_id,
             session_id,
             req.content,
+            enable_search=req.enable_search,
+            search_region=req.search_region,
         ):
-            payload = json.dumps({"content": token}, ensure_ascii=False)
-            yield f"event: token\ndata: {payload}\n\n"
-
-        done_payload = json.dumps(
-            {
-                "total_tokens": total_tokens,
-                "model": "deepseek-chat",
-                "session_id": session_id,
-            },
-            ensure_ascii=False,
-        )
-        yield f"event: done\ndata: {done_payload}\n\n"
+            payload_data = dict(item.data)
+            if item.event == "done":
+                payload_data["session_id"] = session_id
+            payload = json.dumps(payload_data, ensure_ascii=False)
+            yield f"event: {item.event}\ndata: {payload}\n\n"
 
     except Exception as exc:
         error_payload = json.dumps(

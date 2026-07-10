@@ -1,6 +1,7 @@
 """Chat-related Pydantic schemas — request/response shapes."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -49,6 +50,8 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str | None = None
     content: str = Field(min_length=1)
+    enable_search: bool = False
+    search_region: Literal["mainland", "auto"] = "mainland"
 
 
 class MessageResponse(BaseModel):
@@ -90,3 +93,10 @@ class SSETokenEvent(BaseModel):
 class SSEDoneEvent(BaseModel):
     total_tokens: int
     model: str
+
+
+class SSESourcesEvent(BaseModel):
+    sources: list[dict]
+    provider: str | None = None
+    region: str
+    status: str

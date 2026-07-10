@@ -50,6 +50,15 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.deepseek.com/v1"
     llm_default_model: str = "deepseek-chat"
 
+    # Search
+    search_enabled: bool = True
+    search_default_region: str = "mainland"
+    search_provider_mainland: str = "bocha"
+    bocha_api_key: str = ""
+    bocha_search_endpoint: str = "https://api.bocha.cn/v1/web-search"
+    search_max_results: int = 5
+    search_timeout_seconds: float = 8.0
+
 
 @lru_cache
 def get_settings() -> Settings:
