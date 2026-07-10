@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.application.research_agent import AgentEvent, ResearchAgent, ResearchResult
 from src.domain.models.message import Message, MessageRole
 from src.domain.models.session import Session
+from src.infra.config import get_settings
 from src.infra.llm.deepseek_provider import DeepSeekProvider
 from src.infra.search import SearchMetadata, SearchRouter
 
@@ -63,7 +64,7 @@ class ChatService:
         session_id: str,
         content: str,
         model: str | None = None,
-        enable_search: bool = False,
+        enable_search: bool = True,
         search_region: str = "mainland",
     ) -> AsyncIterator[ChatStreamEvent]:
         """Run a full chat turn and yield content tokens.
@@ -127,19 +128,20 @@ class ChatService:
                         agent_result = result
             except Exception as exc:
                 logger.error("research_agent_failed", error=str(exc), exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Research agent request failed - please try again",
-                ) from exc
-
-            if agent_result is None:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Research agent did not return a result",
+                yield ChatStreamEvent(
+                    event="agent_status",
+                    data={"stage": "answering", "fallback": True},
                 )
-            llm_messages = agent_result.messages
-            search_metadata = agent_result.search_metadata
-            agent_trace = agent_result.trace
+                llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history_messages]
+            else:
+                if agent_result is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="Research agent did not return a result",
+                    )
+                llm_messages = agent_result.messages
+                search_metadata = agent_result.search_metadata
+                agent_trace = agent_result.trace
         else:
             llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history_messages]
 

@@ -393,8 +393,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         for (const line of lines) {
           if (line.startsWith('event: ')) continue;
           if (line.startsWith('data: ')) {
+            let payload;
             try {
-              const payload = JSON.parse(line.slice(6));
+              payload = JSON.parse(line.slice(6));
+            } catch {
+              continue;
+            }
+            if ('code' in payload) {
+              throw new Error(payload.message || '服务请求失败');
+            }
+            try {
               if ('content' in payload && Object.keys(payload).length === 1) {
                 set((state) => ({
                   streamingContent: state.streamingContent + payload.content,
@@ -420,8 +428,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 if (payload.search) {
                   searchMeta = payload.search as SearchMetadata;
                 }
-              } else if ('code' in payload) {
-                throw new Error(payload.message);
               }
             } catch { /* 非 JSON 忽略 */ }
           }
