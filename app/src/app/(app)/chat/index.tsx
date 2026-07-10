@@ -150,7 +150,7 @@ export default function ChatMainScreen() {
   const theme = useTheme();
   const user = useAuthStore((s) => s.user);
   const {
-    currentSession, currentMessages, isSending, streamingContent, streamError,
+    currentSession, currentMessages, isSending, streamingContent, streamError, agentStatus,
     fetchSessions, sendMessage,
   } = useChatStore();
   const isGenerating = useDocumentStore((s) => s.isGenerating);
@@ -331,6 +331,12 @@ export default function ChatMainScreen() {
             ref={scrollRef}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           >
+            {agentStatus && (
+              <View style={styles.agentStatus}>
+                <ActivityIndicator size="small" color="rgba(0,0,0,0.55)" />
+                <Text style={styles.agentStatusText}>{agentStatus}</Text>
+              </View>
+            )}
             {displayMessages.map((msg) =>
               msg.role === 'user' ? (
                 <View key={msg.key} style={bubbleStyles.rowOwn}>
@@ -499,6 +505,20 @@ const styles = StyleSheet.create({
   /* Error */
   errorBanner: { backgroundColor: '#FFF3CD', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.two },
   errorText: { color: '#856404', fontSize: 13, fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }) },
+  agentStatus: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 5,
+    paddingBottom: 12,
+  },
+  agentStatusText: {
+    color: 'rgba(0,0,0,0.55)',
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
 
   /* Input Bar */
   inputBarContainer: {

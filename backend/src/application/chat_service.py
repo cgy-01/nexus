@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.research_agent import AgentEvent, ResearchAgent, ResearchResult
 from src.domain.models.message import Message, MessageRole
 from src.domain.models.session import Session
 from src.infra.llm.deepseek_provider import DeepSeekProvider
@@ -30,7 +31,7 @@ _search_router: SearchRouter | None = None
 class ChatStreamEvent:
     """聊天流事件。"""
 
-    event: Literal["sources", "token", "done"]
+    event: Literal["agent_status", "sources", "token", "done"]
     data: dict[str, Any]
 
 
@@ -93,29 +94,47 @@ class ChatService:
         # 3. Fetch recent history (after user msg is committed)
         history = await cls._recent_messages(db, session_id, limit=cls.HISTORY_LIMIT)
 
+        history_messages = [
+            {
+                "role": h.role.value if hasattr(h.role, "value") else str(h.role),
+                "content": h.content,
+            }
+            for h in history
+        ]
         search_metadata: SearchMetadata | None = None
-        if enable_search:
-            search_metadata = await _get_search_router().search(
-                content,
-                region="auto" if search_region == "auto" else "mainland",
-            )
-            yield ChatStreamEvent(
-                event="sources",
-                data=_search_metadata_payload(search_metadata),
-            )
+        agent_trace: dict[str, Any] | None = None
 
-        # 4. Build message list for LLM
-        llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        if search_metadata and search_metadata.sources:
-            llm_messages.append(
-                {
-                    "role": "system",
-                    "content": _format_search_context(search_metadata),
-                }
-            )
-        for h in history:
-            role = h.role.value if hasattr(h.role, "value") else str(h.role)
-            llm_messages.append({"role": role, "content": h.content})
+        # 4. 联网模式下先执行受控 Agent 循环，非联网模式保持直接对话。
+        if enable_search:
+            agent = ResearchAgent(_get_provider(), _get_search_router())
+            agent_result: ResearchResult | None = None
+            try:
+                async for result in agent.run(
+                    history_messages,
+                    model=session.model,
+                    region=search_region,
+                ):
+                    if isinstance(result, AgentEvent):
+                        yield ChatStreamEvent(event=result.event, data=result.data)
+                    else:
+                        agent_result = result
+            except Exception as exc:
+                logger.error("research_agent_failed", error=str(exc), exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Research agent request failed - please try again",
+                ) from exc
+
+            if agent_result is None:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Research agent did not return a result",
+                )
+            llm_messages = agent_result.messages
+            search_metadata = agent_result.search_metadata
+            agent_trace = agent_result.trace
+        else:
+            llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history_messages]
 
         # 5. Stream from LLM
         provider = _get_provider()
@@ -140,6 +159,8 @@ class ChatService:
         assistant_extra: dict[str, Any] = {"model": session.model}
         if search_metadata:
             assistant_extra["search"] = _search_metadata_payload(search_metadata)
+        if agent_trace:
+            assistant_extra["agent_trace"] = agent_trace
 
         assistant_msg = Message(
             session_id=session_id,
@@ -161,6 +182,7 @@ class ChatService:
             user_tokens=user_msg.token_count,
             assistant_tokens=assistant_msg.token_count,
             search_status=search_metadata.status if search_metadata else None,
+            agent_stop_reason=agent_trace.get("stop_reason") if agent_trace else None,
         )
 
         done_payload: dict[str, Any] = {
@@ -169,6 +191,13 @@ class ChatService:
         }
         if search_metadata:
             done_payload["search"] = _search_metadata_payload(search_metadata)
+        if agent_trace:
+            done_payload["agent"] = {
+                "search_count": agent_trace["search_count"],
+                "source_count": agent_trace["source_count"],
+                "elapsed_ms": agent_trace["elapsed_ms"],
+                "stop_reason": agent_trace["stop_reason"],
+            }
         yield ChatStreamEvent(event="done", data=done_payload)
 
     # ------------------------------------------------------------------

@@ -11,6 +11,7 @@ from src.domain.models.session import Session as SessionModel
 from src.domain.models.user import User
 from src.domain.schemas.chat import ChatRequest
 from src.infra.database import get_db
+from src.infra.config import get_settings
 from src.infra.security import get_current_user
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -25,7 +26,10 @@ async def _sse_event_generator(
     # Resolve session — create if needed
     session_id = req.session_id
     if not session_id:
-        session = SessionModel(user_id=user_id)
+        session = SessionModel(
+            user_id=user_id,
+            model=get_settings().llm_default_model,
+        )
         db.add(session)
         await db.flush()
         session_id = str(session.id)

@@ -22,7 +22,12 @@ class BochaSearchProvider:
         self._count = max(1, min(settings.search_max_results, 50))
         self._timeout = settings.search_timeout_seconds
 
-    async def search(self, query: str) -> SearchMetadata:
+    async def search(
+        self,
+        query: str,
+        freshness: str = "noLimit",
+        count: int | None = None,
+    ) -> SearchMetadata:
         """调用博查搜索；异常会转换为 failed 元数据。"""
         if not self._api_key:
             return SearchMetadata(
@@ -35,9 +40,9 @@ class BochaSearchProvider:
 
         payload = {
             "query": query,
-            "freshness": "noLimit",
+            "freshness": freshness,
             "summary": True,
-            "count": self._count,
+            "count": max(1, min(count or self._count, 50)),
         }
         headers = {
             "Authorization": f"Bearer {self._api_key}",

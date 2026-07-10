@@ -11,6 +11,11 @@ class SearchProvider(Protocol):
     provider_name: str
     region: str
 
-    async def search(self, query: str) -> SearchMetadata:
+    async def search(
+        self,
+        query: str,
+        freshness: str = "noLimit",
+        count: int | None = None,
+    ) -> SearchMetadata:
         """执行搜索并返回归一化结果。"""
         ...

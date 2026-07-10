@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.models.session import Session
 from src.domain.schemas.chat import CreateSessionRequest, SessionResponse
+from src.infra.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -26,6 +27,7 @@ class SessionService:
         session = Session(
             user_id=user_id,
             title=req.title or "New Chat",
+            model=get_settings().llm_default_model,
         )
         db.add(session)
         await db.commit()

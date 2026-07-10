@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # LLM
     openai_api_key: str = ""
     openai_base_url: str = "https://api.deepseek.com/v1"
-    llm_default_model: str = "deepseek-chat"
+    llm_default_model: str = "deepseek-v4-flash"
 
     # Search
     search_enabled: bool = True
@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     bocha_search_endpoint: str = "https://api.bocha.cn/v1/web-search"
     search_max_results: int = 5
     search_timeout_seconds: float = 8.0
+
+    # Research agent
+    agent_max_steps: int = 4
+    agent_max_searches: int = 3
+    agent_max_sources: int = 12
+    agent_timeout_seconds: float = 30.0
 
 
 @lru_cache

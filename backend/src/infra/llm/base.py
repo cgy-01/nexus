@@ -1,7 +1,7 @@
 """LLM Provider protocol — swap implementations without changing callers."""
 
 from collections.abc import AsyncIterator
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class LLMProvider(Protocol):
@@ -14,7 +14,7 @@ class LLMProvider(Protocol):
 
     async def chat_stream(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         model: str | None = None,
     ) -> AsyncIterator[str]:
         """Stream chat completion tokens.

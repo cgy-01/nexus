@@ -61,9 +61,20 @@ export interface SSEDoneEvent {
   model: string;
   session_id: string;
   search?: SearchMetadata;
+  agent?: {
+    search_count: number;
+    source_count: number;
+    elapsed_ms: number;
+    stop_reason: string;
+  };
 }
 
 export interface SSESourcesEvent extends SearchMetadata {}
+
+export interface SSEAgentStatusEvent {
+  stage: 'planning' | 'searching' | 'reviewing' | 'answering';
+  step?: number;
+}
 
 export interface SSEErrorEvent {
   code: string;

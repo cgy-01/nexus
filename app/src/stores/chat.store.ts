@@ -174,6 +174,7 @@ interface ChatState {
 
   streamingContent: string;
   streamError: string | null;
+  agentStatus: string | null;
 
   fetchSessions: () => Promise<void>;
   createSession: (title?: string) => Promise<Session | null>;
@@ -197,6 +198,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   fetchError: null,
   streamingContent: '',
   streamError: null,
+  agentStatus: null,
 
   /* ── 会话 ── */
 
@@ -312,6 +314,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isSending: true,
       streamingContent: '',
       streamError: null,
+      agentStatus: enableSearch ? '正在分析问题…' : null,
     }));
 
     /* ── Mock 流式回复 ── */
@@ -340,6 +343,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         currentMessages: [...state.currentMessages, aiMessage],
         streamingContent: '',
         isSending: false,
+        agentStatus: null,
       }));
       return;
     }
@@ -369,6 +373,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let buffer = '';
       let finalTokens = 0;
       let newSessionId: string | null = null;
+      let finalModel = 'deepseek-v4-flash';
       let searchMeta: SearchMetadata | undefined;
 
       while (true) {
@@ -388,10 +393,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 set((state) => ({
                   streamingContent: state.streamingContent + payload.content,
                 }));
+              } else if ('stage' in payload && typeof payload.stage === 'string') {
+                const labels: Record<string, string> = {
+                  planning: '正在分析问题…',
+                  searching: '正在检索资料…',
+                  reviewing: '正在核对资料…',
+                  answering: '正在整理回答…',
+                };
+                set({ agentStatus: labels[payload.stage] ?? '正在联网调研…' });
               } else if ('sources' in payload && 'status' in payload) {
                 searchMeta = payload as SearchMetadata;
               } else if ('total_tokens' in payload) {
                 finalTokens = payload.total_tokens;
+                if (typeof payload.model === 'string') {
+                  finalModel = payload.model;
+                }
                 if (payload.session_id) {
                   newSessionId = payload.session_id;
                 }
@@ -431,7 +447,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const newSession: Session = {
           id: newSessionId,
           title: content.slice(0, 50),
-          model: 'deepseek-chat',
+          model: finalModel,
           total_tokens: finalTokens,
           is_active: true,
           created_at: new Date().toISOString(),
@@ -443,18 +459,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
           sessions: [newSession, ...state.sessions],
           streamingContent: '',
           isSending: false,
+          agentStatus: null,
         });
       } else {
         set({
           currentMessages: [...updatedMsgs, aiMessage],
           streamingContent: '',
           isSending: false,
+          agentStatus: null,
         });
       }
     } catch (error) {
       set({
         isSending: false,
         streamError: error instanceof Error ? error.message : '发送失败',
+        agentStatus: null,
       });
     }
   },
@@ -490,6 +509,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearStream: () => {
-    set({ streamingContent: '', streamError: null, isSending: false });
+    set({ streamingContent: '', streamError: null, isSending: false, agentStatus: null });
   },
 }));

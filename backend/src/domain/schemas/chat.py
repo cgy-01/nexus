@@ -100,3 +100,8 @@ class SSESourcesEvent(BaseModel):
     provider: str | None = None
     region: str
     status: str
+
+
+class SSEAgentStatusEvent(BaseModel):
+    stage: Literal["planning", "searching", "reviewing", "answering"]
+    step: int | None = None

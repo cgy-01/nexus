@@ -15,6 +15,8 @@ class SearchRouter:
         self,
         query: str,
         region: SearchRegion = "mainland",
+        freshness: str = "noLimit",
+        count: int | None = None,
     ) -> SearchMetadata:
         """根据区域选择搜索实现。"""
         resolved_region = (
@@ -50,4 +52,8 @@ class SearchRouter:
                 error=f"Unsupported mainland search provider: {provider_name}",
             )
 
-        return await BochaSearchProvider().search(query)
+        return await BochaSearchProvider().search(
+            query,
+            freshness=freshness,
+            count=count,
+        )
