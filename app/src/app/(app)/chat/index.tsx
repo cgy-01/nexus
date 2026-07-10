@@ -318,7 +318,6 @@ export default function ChatMainScreen() {
       content: m.content,
       search: getSearchMetadata(m.metadata),
     })),
-    ...(streamingContent ? [{ key: 'streaming', role: 'assistant' as const, content: streamingContent, search: null }] : []),
   ];
 
   const pageContent = (
@@ -363,12 +362,6 @@ export default function ChatMainScreen() {
             ref={scrollRef}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           >
-            {agentStatus && (
-              <View style={styles.agentStatus}>
-                <ActivityIndicator size="small" color="rgba(0,0,0,0.55)" />
-                <Text style={styles.agentStatusText}>{agentStatus}</Text>
-              </View>
-            )}
             {displayMessages.map((msg) =>
               msg.role === 'user' ? (
                 <View key={msg.key} style={bubbleStyles.rowOwn}>
@@ -382,6 +375,17 @@ export default function ChatMainScreen() {
                   <SearchSources search={msg.search} />
                 </View>
               ),
+            )}
+            {agentStatus && (
+              <View style={styles.agentStatus}>
+                <ActivityIndicator size="small" color="rgba(0,0,0,0.55)" />
+                <Text style={styles.agentStatusText}>{agentStatus}</Text>
+              </View>
+            )}
+            {streamingContent && (
+              <View style={styles.llmMessage}>
+                <Markdown style={mdStyles}>{streamingContent}</Markdown>
+              </View>
             )}
           </ScrollView>
         </>
@@ -580,7 +584,7 @@ const styles = StyleSheet.create({
   /* Chat */
   chatArea: { flex: 1 },
   chatContent: { paddingTop: 20, paddingBottom: 80 },
-  llmMessage: { paddingHorizontal: 5, marginBottom: 24 },
+  llmMessage: { marginHorizontal: -8, paddingHorizontal: 5, marginBottom: 24 },
 
   /* Error */
   errorBanner: { backgroundColor: '#FFF3CD', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.two },
