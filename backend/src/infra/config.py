@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = "https://api.deepseek.com/v1"
     llm_default_model: str = "deepseek-v4-flash"
+    llm_available_models: str = ""
+
+    def available_models(self) -> list[str]:
+        """返回当前服务实际允许调用的模型，默认模型始终可用。"""
+        models = [
+            model.strip()
+            for model in self.llm_available_models.split(",")
+            if model.strip()
+        ]
+        if self.llm_default_model not in models:
+            models.insert(0, self.llm_default_model)
+        return list(dict.fromkeys(models))
 
     # Search
     search_enabled: bool = True

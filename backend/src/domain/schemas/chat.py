@@ -50,8 +50,14 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str | None = None
     content: str = Field(min_length=1)
+    model: str | None = Field(default=None, min_length=1, max_length=64)
     enable_search: bool = False
     search_region: Literal["mainland", "auto"] = "mainland"
+
+
+class ModelOption(BaseModel):
+    id: str
+    name: str
 
 
 class MessageResponse(BaseModel):

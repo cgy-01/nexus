@@ -62,6 +62,7 @@ class ChatService:
         user_id: str,
         session_id: str,
         content: str,
+        model: str | None = None,
         enable_search: bool = False,
         search_region: str = "mainland",
     ) -> AsyncIterator[ChatStreamEvent]:
@@ -80,6 +81,12 @@ class ChatService:
         session = (await db.execute(q)).scalar_one_or_none()
         if session is None:
             raise HTTPException(status_code=404, detail="Session not found")
+
+        if model:
+            available_models = get_settings().available_models()
+            if model not in available_models:
+                raise HTTPException(status_code=400, detail="Requested model is not available")
+            session.model = model
 
         # 2. Store user message
         user_msg = Message(

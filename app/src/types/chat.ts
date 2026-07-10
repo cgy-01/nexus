@@ -44,9 +44,15 @@ export interface Session {
   updated_at: string;
 }
 
+export interface ModelOption {
+  id: string;
+  name: string;
+}
+
 export interface ChatRequest {
   session_id?: string;
   content: string;
+  model?: string;
   enable_search?: boolean;
   search_region?: 'mainland' | 'auto';
 }

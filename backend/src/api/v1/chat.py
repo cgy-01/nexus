@@ -2,7 +2,7 @@
 
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,17 @@ from src.infra.security import get_current_user
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def _resolve_model(model: str | None) -> str:
+    settings = get_settings()
+    resolved = model or settings.llm_default_model
+    if resolved not in settings.available_models():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested model is not available",
+        )
+    return resolved
+
+
 async def _sse_event_generator(
     db: AsyncSession,
     user_id: str,
@@ -26,9 +37,10 @@ async def _sse_event_generator(
     # Resolve session — create if needed
     session_id = req.session_id
     if not session_id:
+        model = _resolve_model(req.model)
         session = SessionModel(
             user_id=user_id,
-            model=get_settings().llm_default_model,
+            model=model,
         )
         db.add(session)
         await db.flush()
@@ -40,6 +52,7 @@ async def _sse_event_generator(
             user_id,
             session_id,
             req.content,
+            model=req.model,
             enable_search=req.enable_search,
             search_region=req.search_region,
         ):

@@ -181,7 +181,12 @@ interface ChatState {
   deleteSession: (id: string) => Promise<void>;
   fetchMessages: (sessionId: string) => Promise<void>;
   setCurrentSession: (session: Session | null) => void;
-  sendMessage: (sessionId: string | undefined, content: string, enableSearch?: boolean) => Promise<void>;
+  sendMessage: (
+    sessionId: string | undefined,
+    content: string,
+    enableSearch?: boolean,
+    model?: string,
+  ) => Promise<void>;
 
   addStreamToken: (token: string) => void;
   finalizeStream: (totalTokens?: number) => void;
@@ -295,7 +300,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   /* ── 消息发送 + SSE ── */
 
-  sendMessage: async (sessionId, content, enableSearch = false) => {
+  sendMessage: async (sessionId, content, enableSearch = false, model) => {
     const resolvedId: string = sessionId || 'pending';
 
     // 追加用户消息
@@ -360,6 +365,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         {
           session_id: sessionId,
           content,
+          model,
           enable_search: enableSearch,
           search_region: 'mainland',
         },
@@ -462,12 +468,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           agentStatus: null,
         });
       } else {
-        set({
+        set((state) => ({
           currentMessages: [...updatedMsgs, aiMessage],
+          currentSession: state.currentSession?.id === effectiveId
+            ? { ...state.currentSession, model: finalModel }
+            : state.currentSession,
+          sessions: state.sessions.map((session) =>
+            session.id === effectiveId ? { ...session, model: finalModel } : session,
+          ),
           streamingContent: '',
           isSending: false,
           agentStatus: null,
-        });
+        }));
       }
     } catch (error) {
       set({

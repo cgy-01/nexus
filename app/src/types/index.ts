@@ -8,6 +8,7 @@ export type {
   SearchMetadata,
   SearchSource,
   Session,
+  ModelOption,
   ChatRequest,
   SSETokenEvent,
   SSEDoneEvent,

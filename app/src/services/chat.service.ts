@@ -6,7 +6,7 @@
 
 import api, { BASE_URL } from './api';
 import type { ApiResponse, PaginatedResponse } from '@/types/api';
-import type { ChatRequest, Message, Session } from '@/types/chat';
+import type { ChatRequest, Message, ModelOption, Session } from '@/types/chat';
 
 export const chatService = {
   /** 获取会话列表 */
@@ -24,6 +24,12 @@ export const chatService = {
   /** 获取会话详情 */
   async getSession(id: string): Promise<ApiResponse<Session>> {
     const { data } = await api.get(`/sessions/${id}`);
+    return data;
+  },
+
+  /** 获取当前服务端已配置的模型 */
+  async getModels(): Promise<ApiResponse<ModelOption[]>> {
+    const { data } = await api.get('/models');
     return data;
   },
 
@@ -49,6 +55,9 @@ export const chatService = {
     const body: Record<string, unknown> = { content: req.content };
     if (req.session_id) {
       body.session_id = req.session_id;
+    }
+    if (req.model) {
+      body.model = req.model;
     }
     if (req.enable_search) {
       body.enable_search = req.enable_search;

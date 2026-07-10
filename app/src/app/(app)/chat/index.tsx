@@ -18,6 +18,7 @@ import {
   Keyboard,
   ScrollView,
   ActivityIndicator,
+  Alert,
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,7 +30,8 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { useDocumentStore } from '@/stores/document.store';
 import type { NoteType } from '@/services/document.service';
-import type { SearchMetadata, SearchSource } from '@/types/chat';
+import type { ModelOption, SearchMetadata, SearchSource } from '@/types/chat';
+import { chatService } from '@/services/chat.service';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -159,6 +161,10 @@ export default function ChatMainScreen() {
   const [inputText, setInputText] = useState('');
   const [chatStarted, setChatStarted] = useState(false);
   const [noteMenuOpen, setNoteMenuOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const hasInput = inputText.trim().length > 0;
@@ -173,6 +179,28 @@ export default function ChatMainScreen() {
       setChatStarted(true);
     }
   }, [currentSession?.id, currentMessages.length > 0]);
+
+  useEffect(() => {
+    setSelectedModel(currentSession?.model ?? null);
+  }, [currentSession?.id, currentSession?.model]);
+
+  const handleModelMenu = useCallback(async () => {
+    const opening = !modelMenuOpen;
+    setModelMenuOpen(opening);
+    if (!opening || availableModels.length > 0) return;
+
+    setIsLoadingModels(true);
+    try {
+      const response = await chatService.getModels();
+      setAvailableModels(response.data);
+      setSelectedModel((current) => current ?? response.data[0]?.id ?? null);
+    } catch {
+      Alert.alert('无法获取模型', '请检查服务连接后重试。');
+      setModelMenuOpen(false);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, [availableModels.length, modelMenuOpen]);
 
   /* ── 整理笔记 ── */
   const handleOrganizeNote = useCallback(async (noteType: NoteType) => {
@@ -217,21 +245,24 @@ export default function ChatMainScreen() {
     const text = inputText.trim();
     setInputText('');
     setNoteMenuOpen(false);
+    setModelMenuOpen(false);
 
     if (!chatStarted) {
       setChatStarted(true);
       // 不预先创建会话，后端 chat 接口会自动创建
-      await sendMessage(undefined, text, searchEnabled);
+      await sendMessage(undefined, text, searchEnabled, selectedModel ?? undefined);
     } else if (currentSession) {
-      await sendMessage(currentSession.id, text, searchEnabled);
+      await sendMessage(currentSession.id, text, searchEnabled, selectedModel ?? undefined);
     }
-  }, [hasInput, isSending, chatStarted, currentSession, inputText, searchEnabled, sendMessage]);
+  }, [hasInput, isSending, chatStarted, currentSession, inputText, searchEnabled, selectedModel, sendMessage]);
 
   /* ── 新建对话 ── */
   const handleNewChat = useCallback(() => {
     setChatStarted(false);
     setInputText('');
     setNoteMenuOpen(false);
+    setModelMenuOpen(false);
+    setSelectedModel(null);
     // 清空 store 中的当前会话
     useChatStore.setState({ currentSession: null, currentMessages: [], streamingContent: '' });
   }, []);
@@ -373,7 +404,7 @@ export default function ChatMainScreen() {
       <Animated.View
         style={[styles.inputBarContainer, { transform: [{ translateY: Animated.multiply(keyboardAnim, -1) }] }]}
       >
-        {chatStarted && (
+        <View style={styles.inputActions}>
           <View style={styles.generateNoteWrap}>
             {noteMenuOpen && !isGenerating && (
               <View style={styles.noteTypeMenu}>
@@ -394,11 +425,14 @@ export default function ChatMainScreen() {
             )}
             <Pressable
               onPress={() => {
-                if (!isGenerating && currentMessages.length > 0) {
-                  setNoteMenuOpen((open) => !open);
+                if (isGenerating) return;
+                if (currentMessages.length === 0) {
+                  Alert.alert('暂无对话', '请先开始对话后再生成笔记。');
+                  return;
                 }
+                setNoteMenuOpen((open) => !open);
               }}
-              disabled={isGenerating || currentMessages.length === 0}
+              disabled={isGenerating}
               style={({ pressed }) => [
                 styles.generateNoteButton,
                 pressed && { opacity: 0.7 },
@@ -418,25 +452,56 @@ export default function ChatMainScreen() {
               )}
             </Pressable>
           </View>
-        )}
+        </View>
         <View style={styles.inputBar}>
-          <Pressable style={styles.modelButton}>
-            <ModelIcon color={iconColor} />
-          </Pressable>
-          <Pressable
-            onPress={() => setSearchEnabled((enabled) => !enabled)}
-            style={[
-              styles.searchToggle,
-              searchEnabled && styles.searchToggleActive,
-            ]}
-          >
-            <Text style={[
-              styles.searchToggleText,
-              searchEnabled && styles.searchToggleTextActive,
-            ]}>
-              联网
-            </Text>
-          </Pressable>
+          <View style={styles.modelMenuWrap}>
+            <Pressable onPress={handleModelMenu} style={styles.modelButton}>
+              <ModelIcon color={iconColor} />
+            </Pressable>
+            {modelMenuOpen && (
+              <View style={styles.modelMenu}>
+                <Pressable
+                  onPress={() => setSearchEnabled((enabled) => !enabled)}
+                  style={styles.searchMenuRow}
+                >
+                  <Text style={styles.searchMenuText}>联网搜索</Text>
+                  <View style={[styles.searchSwitch, searchEnabled && styles.searchSwitchActive]}>
+                    <View style={[styles.searchSwitchKnob, searchEnabled && styles.searchSwitchKnobActive]} />
+                  </View>
+                </Pressable>
+                <View style={styles.modelMenuDivider} />
+                <Text style={styles.modelMenuTitle}>模型</Text>
+                {isLoadingModels ? (
+                  <ActivityIndicator size="small" color="#000000" style={styles.modelMenuLoading} />
+                ) : (
+                  availableModels.map((model) => (
+                    <Pressable
+                      key={model.id}
+                      onPress={() => {
+                        setSelectedModel(model.id);
+                        setModelMenuOpen(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.modelMenuItem,
+                        selectedModel === model.id && styles.modelMenuItemSelected,
+                        pressed && styles.modelMenuItemPressed,
+                      ]}
+                    >
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.modelMenuItemText,
+                          selectedModel === model.id && styles.modelMenuItemTextSelected,
+                        ]}
+                      >
+                        {model.name}
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            )}
+          </View>
           <TextInput
             style={styles.textInput}
             placeholder="问问 DeepSeek"
@@ -525,9 +590,14 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: '5%', right: '5%',
     alignItems: 'stretch',
   },
+  inputActions: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   generateNoteWrap: {
     alignSelf: 'flex-start',
-    marginBottom: 6,
     position: 'relative',
     zIndex: 10,
   },
@@ -603,30 +673,99 @@ const styles = StyleSheet.create({
     width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
     marginRight: Spacing.two,
   },
-  searchToggle: {
-    height: 30,
-    paddingHorizontal: 9,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.two,
+  modelMenuWrap: {
+    position: 'relative',
+    zIndex: 20,
+  },
+  modelMenu: {
+    position: 'absolute',
+    left: 0,
+    bottom: 42,
+    width: 240,
+    maxHeight: 320,
+    paddingVertical: 6,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 8,
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
   },
-  searchToggleActive: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+  searchMenuRow: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
   },
-  searchToggleText: {
-    fontSize: 13,
-    lineHeight: 18,
+  searchMenuText: {
     color: '#000000',
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
   },
-  searchToggleTextActive: {
-    color: '#ffffff',
+  searchSwitch: {
+    width: 38,
+    height: 22,
+    padding: 2,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.16)',
+    justifyContent: 'center',
+  },
+  searchSwitchActive: {
+    backgroundColor: '#000000',
+    alignItems: 'flex-end',
+  },
+  searchSwitchKnob: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ffffff',
+  },
+  searchSwitchKnobActive: {
+    backgroundColor: '#ffffff',
+  },
+  modelMenuDivider: {
+    height: 1,
+    marginHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  modelMenuTitle: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    color: 'rgba(0,0,0,0.5)',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  modelMenuLoading: {
+    marginVertical: 16,
+  },
+  modelMenuItem: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  modelMenuItemSelected: {
+    backgroundColor: 'rgba(0,0,0,0.07)',
+  },
+  modelMenuItemPressed: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  modelMenuItemText: {
+    color: '#000000',
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  modelMenuItemTextSelected: {
+    fontWeight: '700',
   },
   textInput: {
     flex: 1,
