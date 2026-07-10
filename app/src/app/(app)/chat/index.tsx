@@ -165,7 +165,7 @@ export default function ChatMainScreen() {
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
   const hasInput = inputText.trim().length > 0;
 
