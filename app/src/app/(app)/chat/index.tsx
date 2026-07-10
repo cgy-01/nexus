@@ -185,6 +185,7 @@ export default function ChatMainScreen() {
   }, [currentSession?.id, currentSession?.model]);
 
   const handleModelMenu = useCallback(async () => {
+    setNoteMenuOpen(false);
     const opening = !modelMenuOpen;
     setModelMenuOpen(opening);
     if (!opening || availableModels.length > 0) return;
@@ -401,6 +402,15 @@ export default function ChatMainScreen() {
       )}
 
       {/* Input Bar & Action Button */}
+      {(noteMenuOpen || modelMenuOpen) && (
+        <Pressable
+          style={styles.menuDismissOverlay}
+          onPress={() => {
+            setNoteMenuOpen(false);
+            setModelMenuOpen(false);
+          }}
+        />
+      )}
       <Animated.View
         style={[styles.inputBarContainer, { transform: [{ translateY: Animated.multiply(keyboardAnim, -1) }] }]}
       >
@@ -430,6 +440,7 @@ export default function ChatMainScreen() {
                   Alert.alert('暂无对话', '请先开始对话后再生成笔记。');
                   return;
                 }
+                setModelMenuOpen(false);
                 setNoteMenuOpen((open) => !open);
               }}
               disabled={isGenerating}
@@ -508,6 +519,10 @@ export default function ChatMainScreen() {
             placeholderTextColor="rgba(0,0,0,0.55)"
             value={inputText}
             onChangeText={setInputText}
+            onFocus={() => {
+              setNoteMenuOpen(false);
+              setModelMenuOpen(false);
+            }}
             multiline
             textAlignVertical="center"
           />
@@ -589,6 +604,15 @@ const styles = StyleSheet.create({
   inputBarContainer: {
     position: 'absolute', bottom: 0, left: '5%', right: '5%',
     alignItems: 'stretch',
+    zIndex: 10,
+  },
+  menuDismissOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 5,
   },
   inputActions: {
     alignSelf: 'flex-start',

@@ -171,6 +171,7 @@ export default function AppLayout() {
           width={SIDEBAR_WIDTH}
           sessions={sessions}
           onSessionPress={handleSessionPress}
+          onClose={closeSidebar}
         />
       )}
 
