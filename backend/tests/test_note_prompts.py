@@ -30,6 +30,26 @@ def test_note_prompt_skills_cover_expected_content_types() -> None:
     assert "小红书" in NOTE_SKILL_PROMPTS["xiaohongshu"]
 
 
+def test_wechat_article_prompt_requires_publishable_article() -> None:
+    """公众号类型必须生成文章正文，而不是推文拆解笔记。"""
+    prompt = get_note_skill_prompt("wechat_article")
+
+    assert "直接写出一篇可发布的微信公众号文章" in prompt
+    assert "完整文章正文" in prompt
+    assert "### 推文结构拆解\n" not in prompt
+    assert "不要改写成完整推文" not in prompt
+
+
+def test_xiaohongshu_prompt_requires_publishable_post() -> None:
+    """小红书类型必须生成可发布文案，而不是结构拆解笔记。"""
+    prompt = get_note_skill_prompt("xiaohongshu")
+
+    assert "直接写出一篇可发布的小红书文案" in prompt
+    assert "完整文案" in prompt
+    assert "3 到 8 个可直接发布的话题标签" in prompt
+    assert "### 小红书结构拆解\n" not in prompt
+
+
 def test_generate_note_request_defaults_to_general() -> None:
     """旧前端只传 messages 时仍默认使用通用笔记。"""
     req = GenerateNoteRequest(messages=[{"role": "user", "content": "整理一下"}])

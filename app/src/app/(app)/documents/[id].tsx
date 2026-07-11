@@ -18,11 +18,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import Markdown from 'react-native-markdown-display';
 
 import { useDocumentStore } from '@/stores/document.store';
 import { Spacing } from '@/constants/theme';
 import type { NoteTag } from '@/types/document';
+import { SelectableMarkdown } from '@/components/selectable-markdown';
 
 /* ── 日期格式化 ── */
 function formatFullDate(isoStr: string): string {
@@ -151,11 +151,18 @@ export default function NoteDetailScreen() {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>{note.title}</Text>
+        <Text
+          selectable
+          style={styles.title}
+        >
+          {note.title}
+        </Text>
 
         {/* Body — Markdown rendering */}
         <View style={styles.body}>
-          <Markdown style={mdStyles}>{displayContent}</Markdown>
+          <SelectableMarkdown style={mdStyles}>
+            {displayContent}
+          </SelectableMarkdown>
         </View>
 
         {/* Spacer */}

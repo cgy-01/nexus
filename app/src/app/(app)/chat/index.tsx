@@ -23,7 +23,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useNavigation, type Href } from 'expo-router';
-import Markdown from 'react-native-markdown-display';
 
 import { useChatStore } from '@/stores/chat.store';
 import { useAuthStore } from '@/stores/auth.store';
@@ -44,6 +43,7 @@ import {
   GenerateNoteIcon,
   ChevronDownIcon,
 } from '@/components/icons';
+import { SelectableMarkdown, copyTextToClipboard } from '@/components/selectable-markdown';
 
 const iconColor = '#000000';
 
@@ -122,7 +122,10 @@ function SearchSources({
   }
 
   return (
-    <View style={sourceStyles.wrap}>
+    <View
+      style={sourceStyles.wrap}
+      onTouchStart={(event) => event.stopPropagation()}
+    >
       <Pressable
         style={({ pressed }) => [sourceStyles.summary, pressed && { opacity: 0.65 }]}
         onPress={onToggle}
@@ -131,7 +134,7 @@ function SearchSources({
         <ChevronDownIcon size={14} color="#000000" />
       </Pressable>
       <Text style={sourceStyles.title}>来源</Text>
-      {expanded && search.sources.slice(0, 5).map((source: SearchSource, index) => (
+      {expanded && search.sources.map((source: SearchSource, index) => (
         <Pressable
           key={`${source.url}-${index}`}
           style={({ pressed }) => [sourceStyles.item, pressed && { opacity: 0.7 }]}
@@ -190,6 +193,9 @@ export default function ChatMainScreen() {
   const [searchEnabled, setSearchEnabled] = useState(true);
   const [expandedSourceKey, setExpandedSourceKey] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef(0);
+  const sourceOriginOffsetRef = useRef(0);
+  const shouldRestoreSourceOffsetRef = useRef(false);
   const hasInput = inputText.trim().length > 0;
 
   useEffect(() => {
@@ -210,6 +216,34 @@ export default function ChatMainScreen() {
     });
     return () => cancelAnimationFrame(frame);
   }, [chatStarted, currentMessages.length, streamingContent, agentStatus]);
+
+  useEffect(() => {
+    if (expandedSourceKey !== null || !shouldRestoreSourceOffsetRef.current) return;
+    shouldRestoreSourceOffsetRef.current = false;
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: sourceOriginOffsetRef.current, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expandedSourceKey]);
+
+  const collapseExpandedSources = useCallback(() => {
+    setExpandedSourceKey((current) => {
+      if (current === null) return current;
+      shouldRestoreSourceOffsetRef.current = true;
+      return null;
+    });
+  }, []);
+
+  const toggleSource = useCallback((messageKey: string) => {
+    setExpandedSourceKey((current) => {
+      if (current === messageKey) {
+        shouldRestoreSourceOffsetRef.current = true;
+        return null;
+      }
+      sourceOriginOffsetRef.current = scrollOffsetRef.current;
+      return messageKey;
+    });
+  }, []);
 
   useEffect(() => {
     setSelectedModel(currentSession?.model ?? null);
@@ -391,12 +425,22 @@ export default function ChatMainScreen() {
             contentContainerStyle={styles.chatContent}
             keyboardShouldPersistTaps="handled"
             ref={scrollRef}
+            scrollEventThrottle={16}
+            onScroll={(event) => {
+              scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+            }}
           >
             {displayMessages.map((msg) =>
               msg.role === 'user' ? (
                 <View key={msg.key} style={bubbleStyles.rowOwn}>
                   <View style={bubbleStyles.bubbleOwn}>
-                    <Text style={bubbleStyles.textOwn}>{msg.content}</Text>
+                    <Text
+                      selectable
+                      onLongPress={() => void copyTextToClipboard(msg.content)}
+                      style={bubbleStyles.textOwn}
+                    >
+                      {msg.content}
+                    </Text>
                   </View>
                 </View>
               ) : (
@@ -404,9 +448,13 @@ export default function ChatMainScreen() {
                   <SearchSources
                     search={msg.search}
                     expanded={expandedSourceKey === msg.key}
-                    onToggle={() => setExpandedSourceKey((current) => (current === msg.key ? null : msg.key))}
+                    onToggle={() => toggleSource(msg.key)}
                   />
-                  <Markdown style={mdStyles}>{removeInlineCitationMarkers(msg.content)}</Markdown>
+                  <SelectableMarkdown
+                    style={mdStyles}
+                  >
+                    {removeInlineCitationMarkers(msg.content)}
+                  </SelectableMarkdown>
                 </View>
               ),
             )}
@@ -418,7 +466,11 @@ export default function ChatMainScreen() {
             )}
             {streamingContent && (
               <View style={styles.llmMessage}>
-                <Markdown style={mdStyles}>{removeInlineCitationMarkers(streamingContent)}</Markdown>
+                <SelectableMarkdown
+                  style={mdStyles}
+                >
+                  {removeInlineCitationMarkers(streamingContent)}
+                </SelectableMarkdown>
               </View>
             )}
           </ScrollView>
@@ -563,6 +615,7 @@ export default function ChatMainScreen() {
             }}
             multiline
             textAlignVertical="center"
+            contextMenuHidden={false}
           />
           <Pressable
             style={({ pressed }) => [styles.sendButton, pressed && styles.sendPressed]}
@@ -579,7 +632,7 @@ export default function ChatMainScreen() {
     <View style={styles.root}>
       <View
         style={styles.frame}
-        onTouchStart={() => setExpandedSourceKey((current) => (current === null ? current : null))}
+        onTouchStart={collapseExpandedSources}
       >
         {pageContent}
       </View>
@@ -619,9 +672,14 @@ const styles = StyleSheet.create({
   guidance: { marginTop: 44, gap: 12 },
 
   /* Chat */
-  chatArea: { flex: 1 },
-  chatContent: { paddingTop: 20, paddingBottom: 80 },
-  llmMessage: { marginHorizontal: -20, paddingHorizontal: 4, marginBottom: 24 },
+  chatArea: { flex: 1, marginHorizontal: -Spacing.four },
+  chatContent: { width: '100%', alignItems: 'stretch', paddingHorizontal: 15, paddingTop: 20, paddingBottom: 80 },
+  llmMessage: {
+    width: '100%',
+    alignSelf: 'stretch',
+    paddingHorizontal: 0,
+    marginBottom: 24,
+  },
 
   /* Error */
   errorBanner: { backgroundColor: '#FFF3CD', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.two },
