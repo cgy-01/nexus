@@ -67,6 +67,7 @@ jobs:
       - name: Publish OTA Update (EAS Update)
         run: |
           cd app
-          eas update --branch preview --message "${{ github.event.head_commit.message }}" --non-interactive
+          eas update --branch preview --platform android --message "${{ github.event.head_commit.message }}" --non-interactive
+          eas update --branch preview --platform ios --message "${{ github.event.head_commit.message }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_NEXUS_TOKEN }}
