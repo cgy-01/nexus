@@ -93,6 +93,12 @@ function getSearchMetadata(metadata: Record<string, unknown>): SearchMetadata | 
   return search as SearchMetadata;
 }
 
+function removeInlineCitationMarkers(content: string): string {
+  return content
+    .replace(/\[\d+\](?!\()/g, '')
+    .replace(/[ \t]{2,}/g, ' ');
+}
+
 function SearchSources({
   search,
   expanded,
@@ -196,6 +202,14 @@ export default function ChatMainScreen() {
       setChatStarted(true);
     }
   }, [currentSession?.id, currentMessages.length > 0]);
+
+  useEffect(() => {
+    if (!chatStarted) return;
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [chatStarted, currentMessages.length, streamingContent, agentStatus]);
 
   useEffect(() => {
     setSelectedModel(currentSession?.model ?? null);
@@ -377,7 +391,6 @@ export default function ChatMainScreen() {
             contentContainerStyle={styles.chatContent}
             keyboardShouldPersistTaps="handled"
             ref={scrollRef}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           >
             {displayMessages.map((msg) =>
               msg.role === 'user' ? (
@@ -393,7 +406,7 @@ export default function ChatMainScreen() {
                     expanded={expandedSourceKey === msg.key}
                     onToggle={() => setExpandedSourceKey((current) => (current === msg.key ? null : msg.key))}
                   />
-                  <Markdown style={mdStyles}>{msg.content}</Markdown>
+                  <Markdown style={mdStyles}>{removeInlineCitationMarkers(msg.content)}</Markdown>
                 </View>
               ),
             )}
@@ -405,7 +418,7 @@ export default function ChatMainScreen() {
             )}
             {streamingContent && (
               <View style={styles.llmMessage}>
-                <Markdown style={mdStyles}>{streamingContent}</Markdown>
+                <Markdown style={mdStyles}>{removeInlineCitationMarkers(streamingContent)}</Markdown>
               </View>
             )}
           </ScrollView>
