@@ -57,6 +57,7 @@ const noteTypeOptions: { label: string; value: NoteType }[] = [
 /* ── Markdown 样式 ── */
 const mdStyles = {
   body: {
+    width: '100%' as const, flexShrink: 1,
     fontSize: 18, lineHeight: 29, color: '#000000',
     fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
   },
@@ -606,8 +607,8 @@ const styles = StyleSheet.create({
 
   /* Chat */
   chatArea: { flex: 1 },
-  chatContent: { paddingTop: 20, paddingBottom: 156 },
-  llmMessage: { marginHorizontal: -16, paddingHorizontal: 4, marginBottom: 24 },
+  chatContent: { paddingTop: 20, paddingBottom: 80 },
+  llmMessage: { marginHorizontal: -20, paddingHorizontal: 4, marginBottom: 24 },
 
   /* Error */
   errorBanner: { backgroundColor: '#FFF3CD', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.two },
