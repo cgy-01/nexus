@@ -11,7 +11,7 @@
       "policy": "fingerprint"
     },
     "orientation": "portrait",
-    "icon": "./assets/images/pick_logo.png",
+    "icon": "./assets/images/pick_logo_s.png",
     "scheme": "app",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -24,7 +24,7 @@
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/pick_logo.png",
+        "foregroundImage": "./assets/images/pick_logo_s.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
@@ -46,7 +46,9 @@
             "imageWidth": 120
           }
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

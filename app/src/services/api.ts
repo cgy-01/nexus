@@ -94,7 +94,7 @@ api.interceptors.response.use(
         });
 
         const { access_token, refresh_token } = data.data;
-        tokenStore.setTokens(access_token, refresh_token);
+        await tokenStore.persistTokens(access_token, refresh_token);
 
         processQueue(null, access_token);
 
@@ -102,7 +102,8 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        tokenStore.clear();
+        await tokenStore.clearPersisted();
+        tokenStore.notifyAuthExpired();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

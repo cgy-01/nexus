@@ -7,7 +7,7 @@
  */
 
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -30,7 +30,11 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#000000" />
+      <Image
+        source={require('../../assets/images/splash-icon.png')}
+        style={styles.logo}
+        accessibilityLabel="Pick"
+      />
     </View>
   );
 }
@@ -41,5 +45,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ffffff',
+  },
+  logo: {
+    width: 120,
+    height: 120,
   },
 });

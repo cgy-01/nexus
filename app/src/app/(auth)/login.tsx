@@ -2,7 +2,7 @@
  * 登录页
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,20 +14,32 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, Link, type Href } from 'expo-router';
+import { router, type Href } from 'expo-router';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { Colors, Spacing } from '@/constants/theme';
+import PasswordLoginScreen from '@/components/password-login-screen';
 
-export default function LoginScreen() {
-  const login = useAuthStore((s) => s.login);
+/*
+function LegacyLoginScreen() {
+  const requestEmailCode = useAuthStore((s) => s.requestEmailCode);
+  const verifyEmailCode = useAuthStore((s) => s.verifyEmailCode);
 
-  const [email, setEmail] = useState('test@example.com');
-  const [password, setPassword] = useState('12345678');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = email.trim().length > 0 && password.trim().length > 0 && !isSubmitting;
+  useEffect(() => {
+    if (secondsRemaining <= 0) return;
+    const timer = setTimeout(() => setSecondsRemaining((seconds) => seconds - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [secondsRemaining]);
+
+  const canRequestCode = email.trim().length > 0 && secondsRemaining === 0 && !isSubmitting;
+  const canSubmit = email.trim().length > 0 && code.length === 6 && !isSubmitting;
 
   const handleLogin = async () => {
     if (!canSubmit) return;
@@ -115,6 +127,9 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
+*/
+
+export default PasswordLoginScreen;
 
 const styles = StyleSheet.create({
   safeArea: {

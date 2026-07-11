@@ -4,18 +4,35 @@
 
 import api from './api';
 import type { ApiResponse } from '@/types/api';
-import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/auth';
+import type {
+  AuthResponse,
+  EmailCodeRequest,
+  EmailCodeVerifyRequest,
+  LoginRequest,
+  RegisterRequest,
+  User,
+} from '@/types/auth';
 
 export const authService = {
-  /** 登录 */
   async login(req: LoginRequest): Promise<ApiResponse<AuthResponse>> {
     const { data } = await api.post('/auth/login', req);
     return data;
   },
 
-  /** 注册 */
   async register(req: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
     const { data } = await api.post('/auth/register', req);
+    return data;
+  },
+
+  /** 登录 */
+  async requestEmailCode(req: EmailCodeRequest): Promise<ApiResponse<{ message: string }>> {
+    const { data } = await api.post('/auth/email/request-code', req);
+    return data;
+  },
+
+  /** 注册 */
+  async verifyEmailCode(req: EmailCodeVerifyRequest): Promise<ApiResponse<AuthResponse>> {
+    const { data } = await api.post('/auth/email/verify-code', req);
     return data;
   },
 

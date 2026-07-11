@@ -7,6 +7,8 @@
 
 import { create } from 'zustand';
 import { documentService } from '@/services/document.service';
+import { localCache } from '@/services/local-cache';
+import { useAuthStore } from '@/stores/auth.store';
 import type { GenerateNoteRequest } from '@/services/document.service';
 import type { Note, NoteTag } from '@/types/document';
 
@@ -114,6 +116,7 @@ interface DocumentState {
   selectedIds: string[];
 
   fetchNotes: () => Promise<void>;
+  hydrateCache: (userId: string) => Promise<void>;
   setActiveTag: (tag: NoteTag | '全部') => void;
   setSearchQuery: (query: string) => void;
   deleteNote: (id: string) => Promise<void>;
@@ -197,6 +200,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         ];
         return { notes: merged, isLoading: false };
       });
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await localCache.replaceNotes(userId, get().notes);
+      }
     } catch (err) {
       set({
         fetchError:
@@ -206,6 +213,13 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       });
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  hydrateCache: async (userId) => {
+    const notes = await localCache.getNotes(userId);
+    if (notes.length > 0) {
+      set({ notes });
     }
   },
 
@@ -226,6 +240,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     set((state) => ({
       notes: state.notes.filter((n) => n.id !== id),
     }));
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      await localCache.replaceNotes(userId, get().notes);
+    }
   },
 
   /* ── 批量选择 ── */
@@ -271,6 +289,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       isSelectionMode: false,
       selectedIds: [],
     }));
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      await localCache.replaceNotes(userId, get().notes);
+    }
   },
 
   batchTogglePin: async () => {
@@ -290,6 +312,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         selectedIds: [],
       };
     });
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      await localCache.replaceNotes(userId, get().notes);
+    }
   },
 
   generateNoteFromChat: async (req, optimisticId) => {
@@ -335,6 +361,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         notes: state.notes.map((n) => (n.id === oid ? note : n)),
         isGenerating: false,
       }));
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await localCache.replaceNotes(userId, get().notes);
+      }
       return note;
     }
 
@@ -346,6 +376,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         notes: state.notes.map((n) => (n.id === oid ? realNote : n)),
         isGenerating: false,
       }));
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await localCache.replaceNotes(userId, get().notes);
+      }
       return realNote;
     } catch (err) {
       // 失败时更新占位笔记为失败状态

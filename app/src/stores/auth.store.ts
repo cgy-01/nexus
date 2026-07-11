@@ -7,8 +7,16 @@
 
 import { create } from 'zustand';
 import { authService } from '@/services/auth.service';
+import { localCache } from '@/services/local-cache';
+import { localMedia } from '@/services/local-media';
 import { tokenStore } from '@/services/token';
-import type { User, LoginRequest, RegisterRequest } from '@/types/auth';
+import type {
+  User,
+  EmailCodeRequest,
+  EmailCodeVerifyRequest,
+  LoginRequest,
+  RegisterRequest,
+} from '@/types/auth';
 
 interface AuthState {
   /* ── 数据 ── */
@@ -21,12 +29,15 @@ interface AuthState {
   isLoading: boolean;
 
   /* ── 操作 ── */
+  requestEmailCode: (req: EmailCodeRequest) => Promise<string>;
+  verifyEmailCode: (req: EmailCodeVerifyRequest) => Promise<void>;
   login: (req: LoginRequest) => Promise<void>;
   register: (req: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   setTokens: (tokens: { access_token: string; refresh_token: string; token_type: string }) => void;
   setUser: (user: User) => void;
-  hydrate: () => void;
+  clearSession: () => void;
+  hydrate: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -36,10 +47,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: false,
   isLoading: true,
 
+  requestEmailCode: async (req) => {
+    const res = await authService.requestEmailCode(req);
+    return res.data.message;
+  },
+
+  verifyEmailCode: async (req) => {
+    const res = await authService.verifyEmailCode(req);
+    const { access_token, refresh_token } = res.data;
+    await tokenStore.persistTokens(access_token, refresh_token, res.data.user.id);
+    await localCache.saveUser(res.data.user);
+    set({
+      user: res.data.user,
+      accessToken: access_token,
+      refreshToken: refresh_token,
+      isLoggedIn: true,
+    });
+  },
+
   login: async (req) => {
     const res = await authService.login(req);
     const { access_token, refresh_token } = res.data;
-    tokenStore.setTokens(access_token, refresh_token);
+    await tokenStore.persistTokens(access_token, refresh_token, res.data.user.id);
+    await localCache.saveUser(res.data.user);
     set({
       user: res.data.user,
       accessToken: access_token,
@@ -51,7 +81,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (req) => {
     const res = await authService.register(req);
     const { access_token, refresh_token } = res.data;
-    tokenStore.setTokens(access_token, refresh_token);
+    await tokenStore.persistTokens(access_token, refresh_token, res.data.user.id);
+    await localCache.saveUser(res.data.user);
     set({
       user: res.data.user,
       accessToken: access_token,
@@ -60,9 +91,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  logout: () => {
-    authService.logout().catch(() => {});
-    tokenStore.clear();
+  logout: async () => {
+    const userId = useAuthStore.getState().user?.id;
+    await authService.logout().catch(() => {});
+    await tokenStore.clearPersisted();
+    if (userId) {
+      await localCache.clearUserData(userId);
+      await localMedia.clearUserFiles(userId);
+    }
     set({
       user: null,
       accessToken: null,
@@ -81,15 +117,56 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => {
     set({ user });
+    void localCache.saveUser(user);
   },
 
-  hydrate: () => {
-    // 启动时从 tokenStore 恢复 token（如果有持久化）
-    const access = tokenStore.getAccessToken();
-    if (access) {
-      set({ accessToken: access, refreshToken: tokenStore.getRefreshToken() });
-      // TODO: 用 access token 调 /users/me 验证有效性
+  clearSession: () => {
+    set({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isLoggedIn: false,
+    });
+  },
+
+  hydrate: async () => {
+    let cachedUser: User | null = null;
+    let restoredRefreshToken: string | null = null;
+    try {
+      const { refreshToken, userId } = await tokenStore.restoreSession();
+      if (!refreshToken) return;
+      restoredRefreshToken = refreshToken;
+
+      cachedUser = userId ? await localCache.getUser(userId) : null;
+      if (cachedUser) {
+        set({ user: cachedUser, refreshToken, isLoggedIn: true });
+      }
+
+      const refreshed = await authService.refresh(refreshToken);
+      tokenStore.setTokens(refreshed.data.access_token, refreshed.data.refresh_token);
+      const user = await authService.getMe();
+      await tokenStore.persistTokens(
+        refreshed.data.access_token,
+        refreshed.data.refresh_token,
+        user.data.id,
+      );
+      await localCache.saveUser(user.data);
+      set({
+        user: user.data,
+        accessToken: refreshed.data.access_token,
+        refreshToken: refreshed.data.refresh_token,
+        isLoggedIn: true,
+      });
+    } catch (error) {
+      const status = (error as { response?: { status?: number } }).response?.status;
+      if (cachedUser && !status) {
+        set({ user: cachedUser, refreshToken: restoredRefreshToken, isLoggedIn: true });
+      } else {
+        await tokenStore.clearPersisted();
+        set({ user: null, accessToken: null, refreshToken: null, isLoggedIn: false });
+      }
+    } finally {
+      set({ isLoading: false });
     }
-    set({ isLoading: false });
   },
 }));

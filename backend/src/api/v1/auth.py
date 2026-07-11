@@ -28,10 +28,10 @@ async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, AuthData]:
-    """Create a new user account and return tokens."""
+    """Create a password account and return tokens."""
     data = await AuthService.register(
         db,
-        email=body.email,
+        email=str(body.email),
         password=body.password,
         display_name=body.display_name,
     )
@@ -46,10 +46,10 @@ async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, AuthData]:
-    """Authenticate a user and return tokens."""
+    """Authenticate a password account and return tokens."""
     data = await AuthService.login(
         db,
-        email=body.email,
+        email=str(body.email),
         password=body.password,
     )
     return {"data": data}

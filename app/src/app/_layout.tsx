@@ -13,14 +13,31 @@ import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/auth.store';
+import { useChatStore } from '@/stores/chat.store';
+import { useDocumentStore } from '@/stores/document.store';
+import { tokenStore } from '@/services/token';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const hydrate = useAuthStore((s) => s.hydrate);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const userId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    return tokenStore.onAuthExpired(() => {
+      useAuthStore.getState().clearSession();
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn || !userId) return;
+    void useChatStore.getState().hydrateCache(userId);
+    void useDocumentStore.getState().hydrateCache(userId);
+  }, [isLoggedIn, userId]);
 
   return (
     <SafeAreaProvider>

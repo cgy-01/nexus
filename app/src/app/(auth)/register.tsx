@@ -14,12 +14,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, Link, type Href } from 'expo-router';
+import { Redirect, router, Link, type Href } from 'expo-router';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { Colors, Spacing } from '@/constants/theme';
+import PasswordRegisterScreen from '@/components/password-register-screen';
 
-export default function RegisterScreen() {
+/*
+function LegacyRegisterScreen() {
   const register = useAuthStore((s) => s.register);
 
   const [displayName, setDisplayName] = useState('');
@@ -154,6 +156,11 @@ export default function RegisterScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+*/
+
+export default function RegisterScreen() {
+  return <PasswordRegisterScreen />;
 }
 
 const styles = StyleSheet.create({

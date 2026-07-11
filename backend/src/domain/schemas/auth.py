@@ -10,6 +10,19 @@ from src.domain.schemas.user import UserResponse
 # ---------------------------------------------------------------------------
 
 
+class EmailCodeRequest(BaseModel):
+    """POST /auth/email/request-code"""
+
+    email: EmailStr
+
+
+class EmailCodeVerifyRequest(BaseModel):
+    """POST /auth/email/verify-code"""
+
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class RegisterRequest(BaseModel):
     """POST /auth/register"""
 

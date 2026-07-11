@@ -129,12 +129,6 @@ const heatmapStyles = StyleSheet.create({
 });
 
 /* ── Stats ── */
-interface StatsData {
-  total_notes: number;
-  total_active_days: number;
-  consecutive_days: number;
-}
-
 function fmtStat(val: number | undefined | null, toDash?: boolean): string {
   if (val == null) return '–';
   if (toDash && val === 1) return '–';

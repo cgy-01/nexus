@@ -1,3 +1,4 @@
+import type { ColorValue } from 'react-native';
 import Svg, { Path, Circle, ClipPath, Defs, G, Rect } from 'react-native-svg';
 
 /* ── 三横线菜单按钮 ── */
@@ -69,7 +70,7 @@ export function MoreIcon({ size = 24, color = '#1E1E1E' }: { size?: number; colo
 }
 
 /* ── 底栏聊天图标 ── */
-export function ChatTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; color?: string }) {
+export function ChatTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; color?: ColorValue }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
       <Path
@@ -85,7 +86,7 @@ export function ChatTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; c
 }
 
 /* ── 底栏笔记图标 ── */
-export function NotesTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; color?: string }) {
+export function NotesTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; color?: ColorValue }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
       <Path
@@ -101,7 +102,7 @@ export function NotesTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; 
 }
 
 /* ── 底栏用户图标 ── */
-export function UserTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; color?: string }) {
+export function UserTabIcon({ size = 24, color = '#1E1E1E' }: { size?: number; color?: ColorValue }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
       <Path

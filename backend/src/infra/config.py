@@ -36,7 +36,20 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
-    refresh_token_expire_days: int = 7
+    refresh_token_expire_days: int = 30
+
+    # Email authentication
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_address: str = ""
+    smtp_use_ssl: bool = False
+    smtp_starttls: bool = True
+    smtp_timeout_seconds: float = 10.0
+    email_code_expire_minutes: int = 10
+    email_code_resend_seconds: int = 60
+    email_code_max_attempts: int = 5
 
     # MinIO
     minio_endpoint: str = "localhost:9000"

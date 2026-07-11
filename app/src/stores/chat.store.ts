@@ -7,7 +7,9 @@
 
 import { create } from 'zustand';
 import { chatService } from '@/services/chat.service';
+import { localCache } from '@/services/local-cache';
 import { tokenStore } from '@/services/token';
+import { useAuthStore } from '@/stores/auth.store';
 import type { Message, SearchMetadata, Session } from '@/types/chat';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -177,6 +179,7 @@ interface ChatState {
   agentStatus: string | null;
 
   fetchSessions: () => Promise<void>;
+  hydrateCache: (userId: string) => Promise<void>;
   createSession: (title?: string) => Promise<Session | null>;
   deleteSession: (id: string) => Promise<void>;
   fetchMessages: (sessionId: string) => Promise<void>;
@@ -220,6 +223,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const res = await chatService.getSessions();
       set({ sessions: res.data.data });
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await localCache.replaceSessions(userId, res.data.data);
+      }
     } catch (err) {
       set({
         fetchError:
@@ -229,6 +236,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
     } finally {
       set({ isLoadingSessions: false });
+    }
+  },
+
+  hydrateCache: async (userId) => {
+    const sessions = await localCache.getSessions(userId);
+    if (sessions.length > 0) {
+      set({ sessions });
     }
   },
 
@@ -248,6 +262,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         currentSession: session,
         currentMessages: [],
       }));
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await localCache.replaceSessions(userId, get().sessions);
+      }
       return session;
     }
 
@@ -276,6 +294,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentSession: state.currentSession?.id === id ? null : state.currentSession,
       currentMessages: state.currentSession?.id === id ? [] : state.currentMessages,
     }));
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      await localCache.replaceSessions(userId, get().sessions);
+    }
   },
 
   fetchMessages: async (sessionId) => {
@@ -286,9 +308,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      const cachedMessages = await localCache.getMessages(userId, sessionId);
+      if (cachedMessages.length > 0) {
+        set({ currentMessages: cachedMessages });
+      }
+    }
+
     try {
       const res = await chatService.getMessages(sessionId);
       set({ currentMessages: res.data.data });
+      if (userId) {
+        await localCache.replaceMessages(userId, sessionId, res.data.data);
+      }
     } catch {
       // 静默
     }
@@ -486,6 +519,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
           isSending: false,
           agentStatus: null,
         }));
+      }
+
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await localCache.replaceMessages(userId, effectiveId, updatedMsgs.concat(aiMessage));
+        await localCache.replaceSessions(userId, get().sessions);
       }
     } catch (error) {
       set({

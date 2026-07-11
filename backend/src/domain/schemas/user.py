@@ -10,7 +10,7 @@ class UserResponse(BaseModel):
     """Public user representation returned by the API."""
 
     id: uuid.UUID
-    email: str
+    email: str | None = None
     display_name: str | None = None
     avatar_url: str | None = None
     is_active: bool
