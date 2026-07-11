@@ -92,7 +92,15 @@ function getSearchMetadata(metadata: Record<string, unknown>): SearchMetadata | 
   return search as SearchMetadata;
 }
 
-function SearchSources({ search }: { search: SearchMetadata | null }) {
+function SearchSources({
+  search,
+  expanded,
+  onToggle,
+}: {
+  search: SearchMetadata | null;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   if (!search) return null;
 
   if (search.sources.length === 0) {
@@ -108,8 +116,15 @@ function SearchSources({ search }: { search: SearchMetadata | null }) {
 
   return (
     <View style={sourceStyles.wrap}>
+      <Pressable
+        style={({ pressed }) => [sourceStyles.summary, pressed && { opacity: 0.65 }]}
+        onPress={onToggle}
+      >
+        <Text style={sourceStyles.summaryTitle}>来源 · {search.sources.length}</Text>
+        <ChevronDownIcon size={14} color="#000000" />
+      </Pressable>
       <Text style={sourceStyles.title}>来源</Text>
-      {search.sources.slice(0, 5).map((source: SearchSource, index) => (
+      {expanded && search.sources.slice(0, 5).map((source: SearchSource, index) => (
         <Pressable
           key={`${source.url}-${index}`}
           style={({ pressed }) => [sourceStyles.item, pressed && { opacity: 0.7 }]}
@@ -166,6 +181,7 @@ export default function ChatMainScreen() {
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [searchEnabled, setSearchEnabled] = useState(true);
+  const [expandedSourceKey, setExpandedSourceKey] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const hasInput = inputText.trim().length > 0;
 
@@ -371,8 +387,12 @@ export default function ChatMainScreen() {
                 </View>
               ) : (
                 <View key={msg.key} style={styles.llmMessage}>
+                  <SearchSources
+                    search={msg.search}
+                    expanded={expandedSourceKey === msg.key}
+                    onToggle={() => setExpandedSourceKey((current) => (current === msg.key ? null : msg.key))}
+                  />
                   <Markdown style={mdStyles}>{msg.content}</Markdown>
-                  <SearchSources search={msg.search} />
                 </View>
               ),
             )}
@@ -543,7 +563,10 @@ export default function ChatMainScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.frame}>
+      <View
+        style={styles.frame}
+        onTouchStart={() => setExpandedSourceKey((current) => (current === null ? current : null))}
+      >
         {pageContent}
       </View>
     </View>
@@ -583,8 +606,8 @@ const styles = StyleSheet.create({
 
   /* Chat */
   chatArea: { flex: 1 },
-  chatContent: { paddingTop: 20, paddingBottom: 80 },
-  llmMessage: { marginHorizontal: -8, paddingHorizontal: 5, marginBottom: 24 },
+  chatContent: { paddingTop: 20, paddingBottom: 156 },
+  llmMessage: { marginHorizontal: -16, paddingHorizontal: 4, marginBottom: 24 },
 
   /* Error */
   errorBanner: { backgroundColor: '#FFF3CD', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.two },
@@ -822,6 +845,21 @@ const sourceStyles = StyleSheet.create({
     gap: 8,
   },
   title: {
+    display: 'none',
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(0,0,0,0.55)',
+    fontWeight: '700',
+    fontFamily: Platform.select({ ios: 'system-ui', default: 'normal' }),
+  },
+  summary: {
+    minHeight: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  summaryTitle: {
     fontSize: 13,
     lineHeight: 18,
     color: 'rgba(0,0,0,0.55)',
