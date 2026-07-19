@@ -1,6 +1,6 @@
-# Nexus AI — 全栈 AI 助手
+# Nexus AI
 
-> Expo 跨平台前端 + FastAPI 后端 + DeepSeek LLM，提供 AI 对话、笔记生成、会话管理。
+> A cross-platform AI assistant built with Expo, FastAPI, and DeepSeek. It provides AI chat, note generation, and conversation management.
 
 <p align="center">
   <img src="https://img.shields.io/badge/frontend-Expo_56-000?logo=expo" alt="Expo 56">
@@ -12,128 +12,122 @@
 
 ---
 
-## ✨ 功能
+## Features
 
-| 模块 | 说明 |
-|------|------|
-| **AI 对话** | 多会话管理，SSE 流式输出，接入 DeepSeek LLM |
-| **笔记生成** | 从对话内容 AI 自动生成结构化 Markdown 笔记 |
-| **用户系统** | 注册 / 登录 / Token 自动刷新，JWT 双 Token 机制 |
-| **跨平台** | Android / iOS / Web 三端统一体验 |
+| Area | Description |
+|------|-------------|
+| **AI Chat** | Multi-conversation management with SSE streaming and DeepSeek integration. |
+| **Note Generation** | Generate structured Markdown notes from chat content with AI. |
+| **Authentication** | Registration, login, automatic token refresh, and JWT access/refresh tokens. |
+| **Cross-platform** | A consistent experience on Android, iOS, and the web. |
 
-## 🏗 架构
+## Architecture
 
-```
+```text
 ┌─────────────────────────────────┐
-│  前端 (app/)                     │
-│  Expo SDK 56 · RN 0.85          │
-│  Expo Router · Zustand          │
+│ Frontend (app/)                 │
+│ Expo SDK 56 · React Native 0.85 │
+│ Expo Router · Zustand           │
 └──────────────┬──────────────────┘
                │ SSE / REST (Axios)
 ┌──────────────▼──────────────────┐
-│  后端 (backend/)                 │
-│  FastAPI · SQLAlchemy 2.0       │
-│  ┌──────────┬──────────┐        │
-│  │PostgreSQL│  Redis   │ MinIO  │
-│  │+pgvector │ 缓存/会话 │ 对象存储│
-│  └──────────┴──────────┘        │
-│         DeepSeek LLM            │
+│ Backend (backend/)              │
+│ FastAPI · SQLAlchemy 2.0        │
+│ PostgreSQL + pgvector · Redis   │
+│ MinIO · DeepSeek LLM            │
 └─────────────────────────────────┘
 ```
 
-## 🚀 快速开始
+## Quick Start
 
-### 环境要求
+### Prerequisites
 
-- **Docker Desktop**（运行后端基础设施）
-- **Node.js** ≥ 18（前端）
-- 无需本地安装 Python、PostgreSQL、Redis
+- **Docker Desktop** for backend infrastructure.
+- **Node.js** 18 or later for the frontend.
+- Python, PostgreSQL, and Redis do not need to be installed locally when using Docker.
 
-### 1. 启动后端
+### 1. Start the backend
 
 ```bash
 cd backend
-cp .env.example .env          # 编辑 .env，填入 LLM API Key
-docker compose up -d           # 启动 PostgreSQL + Redis + MinIO + API
+cp .env.example .env
+# Edit .env and replace every placeholder with a secure value.
+docker compose up -d
 
-# 首次运行需执行数据库迁移
+# Run database migrations on the first startup.
 docker compose exec api alembic revision --autogenerate -m "init"
 docker compose exec api alembic upgrade head
 ```
 
-验证：`curl http://localhost:8001/api/v1/health` → `{"status":"ok","db":"ok","redis":"ok"}`
+Verify the service:
 
-Swagger 文档：浏览器打开 [http://localhost:8001/docs](http://localhost:8001/docs)
+```bash
+curl http://localhost:8001/api/v1/health
+```
 
-### 2. 启动前端
+The expected response is `{"status":"ok","db":"ok","redis":"ok"}`. API documentation is available at [http://localhost:8001/docs](http://localhost:8001/docs).
+
+### 2. Start the frontend
 
 ```bash
 cd app
+cp .env.example .env
 npm install
-npx expo start --web           # Web 模式，浏览器自动打开
+npx expo start --web
 ```
 
-### 3. 注册 / 登录
+Set `EXPO_PUBLIC_API_URL` in `app/.env` to the backend API URL, for example `http://localhost:8001/api/v1`.
 
-打开前端页面 → 注册账号（密码至少 8 位）→ 自动跳转至 AI 对话页。
+### 3. Register and sign in
 
-> 详细环境搭建（含故障排查）见 [backend/SETUP.md](backend/SETUP.md)。
+Open the frontend, create an account with a password of at least eight characters, and you will be redirected to the AI chat page.
 
-## 📁 项目结构
+For detailed setup instructions and troubleshooting, see [backend/SETUP.md](backend/SETUP.md).
 
-```
+## Project Structure
+
+```text
 nexus/
-├── app/                        # 前端：Expo 跨平台应用
-│   ├── src/app/                #   Expo Router 页面（文件路由）
-│   ├── src/components/         #   可复用 UI 组件
-│   ├── src/services/           #   API 层（Axios + SSE）
-│   ├── src/stores/             #   Zustand 状态管理
-│   ├── src/types/              #   TypeScript 类型定义
-│   └── src/hooks/              #   自定义 Hooks
-├── backend/                    # 后端：FastAPI 服务
-│   ├── src/api/v1/             #   路由层（REST + SSE）
-│   ├── src/application/        #   业务逻辑层
-│   ├── src/domain/             #   领域层（ORM + Schema）
-│   └── src/infra/              #   基础设施层（DB/Redis/LLM）
-└── .github/workflows/          # CI/CD：自动部署
+├── app/                        # Expo cross-platform frontend
+│   ├── src/app/                # Expo Router pages
+│   ├── src/components/         # Reusable UI components
+│   ├── src/services/           # API layer (Axios + SSE)
+│   ├── src/stores/             # Zustand state stores
+│   ├── src/types/              # TypeScript type definitions
+│   └── src/hooks/              # Custom hooks
+├── backend/                    # FastAPI backend
+│   ├── src/api/v1/             # REST and SSE routes
+│   ├── src/application/        # Application services
+│   ├── src/domain/             # Domain models and schemas
+│   └── src/infra/              # Database, Redis, LLM, and other infrastructure
+└── .github/                    # GitHub configuration
 ```
 
-## 🛠 技术栈
+## Technology Stack
 
-| 层 | 前端 | 后端 |
+| Layer | Frontend | Backend |
 |---|------|------|
-| **框架** | Expo SDK 56 + React Native 0.85 | FastAPI (async) |
-| **语言** | TypeScript 6.0 | Python 3.12 |
-| **路由** | Expo Router（文件路由） | APIRouter |
-| **状态 / ORM** | Zustand | SQLAlchemy 2.0 + asyncpg |
-| **HTTP / 通信** | Axios + SSE | uvicorn + SSE |
-| **数据校验** | — | Pydantic v2 |
-| **数据库** | — | PostgreSQL 16 + pgvector |
-| **缓存** | — | Redis 7 |
-| **对象存储** | — | MinIO (S3 兼容) |
-| **LLM** | — | DeepSeek (OpenAI 协议) |
-| **迁移** | — | Alembic |
-| **包管理** | npm | uv |
+| **Framework** | Expo SDK 56 + React Native 0.85 | FastAPI (async) |
+| **Language** | TypeScript 6.0 | Python 3.12 |
+| **Routing** | Expo Router | APIRouter |
+| **State / ORM** | Zustand | SQLAlchemy 2.0 + asyncpg |
+| **HTTP / Streaming** | Axios + SSE | uvicorn + SSE |
+| **Validation** | — | Pydantic v2 |
+| **Database** | — | PostgreSQL 16 + pgvector |
+| **Cache** | — | Redis 7 |
+| **Object Storage** | — | MinIO (S3-compatible) |
+| **LLM** | — | DeepSeek via the OpenAI-compatible API |
+| **Migrations** | — | Alembic |
+| **Package Manager** | npm | uv |
 
-## 🚢 部署
+## Subproject Documentation
 
-推送到 `main` 分支自动触发 GitHub Actions：
+| Directory | Documentation |
+|------|---------------|
+| [app/README.md](app/README.md) | Frontend stack, project structure, and conventions. |
+| [backend/README.md](backend/README.md) | API endpoints, architecture, environment variables, and tests. |
+| [backend/SETUP.md](backend/SETUP.md) | Development setup, integration configuration, and troubleshooting. |
 
-| 变更目录 | 动作 |
-|----------|------|
-| `backend/**` | self-hosted runner 上 Docker 构建并重启 |
-| `app/**` | EAS Update 推送 OTA 热更新到 preview 频道 |
-
-详见 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)。
-
-## 📖 子项目文档
-
-| 目录 | 说明 |
-|------|------|
-| [app/README.md](app/README.md) | 前端技术栈、项目结构、关键约定 |
-| [backend/README.md](backend/README.md) | API 端点详情、架构设计、环境变量、测试 |
-| [backend/SETUP.md](backend/SETUP.md) | 开发环境搭建、联调配置、故障排查 |
-
-## 📄 许可证
+## License
 
 MIT
