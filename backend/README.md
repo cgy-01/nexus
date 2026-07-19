@@ -273,7 +273,7 @@ Chat 端点使用 Server-Sent Events 协议：
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `DATABASE_URL` | PostgreSQL 连接串 (asyncpg) | `postgresql+asyncpg://nexus:nexus_dev@localhost:5432/nexus` |
+| `DATABASE_URL` | PostgreSQL 连接串 (asyncpg) | `postgresql+asyncpg://nexus:<password>@localhost:5432/nexus` |
 | `REDIS_URL` | Redis 连接串 | `redis://localhost:6379/0` |
 | `JWT_SECRET_KEY` | JWT 签名密钥（**生产必须修改**） | - |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | access_token 有效期 | `15` |
@@ -284,8 +284,8 @@ Chat 端点使用 Server-Sent Events 协议：
 | `OPENAI_BASE_URL` | LLM API 地址 | `https://api.deepseek.com/v1` |
 | `LLM_DEFAULT_MODEL` | 默认模型 | `deepseek-chat` |
 | `MINIO_ENDPOINT` | MinIO 地址 | `localhost:9000` |
-| `MINIO_ROOT_USER` | MinIO 用户名 | `minioadmin` |
-| `MINIO_ROOT_PASSWORD` | MinIO 密码 | `minioadmin` |
+| `MINIO_ROOT_USER` | MinIO 管理员用户名 | 在 `.env` 中设置 |
+| `MINIO_ROOT_PASSWORD` | MinIO 管理员密码 | 在 `.env` 中设置 |
 | `MINIO_BUCKET` | 存储桶名称 | `nexus-files` |
 
 ---

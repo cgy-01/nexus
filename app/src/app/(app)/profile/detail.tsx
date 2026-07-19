@@ -163,7 +163,7 @@ export default function ProfileDetailScreen() {
   // 用 avatar_url 末尾随机字符串作为 cache-busting key，确保换头像后 URL 必然不同
   const avatarCacheKey = user?.avatar_url?.slice(-8) ?? '0';
   const avatarUrl = user?.avatar_url && user?.id
-    ? `http://121.41.31.221:8001/api/v1/users/avatars/${user.id}?v=${avatarCacheKey}`
+    ? `${SERVER_HOST}/api/v1/users/avatars/${user.id}?v=${avatarCacheKey}`
     : null;
 
   return (

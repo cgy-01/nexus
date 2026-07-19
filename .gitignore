@@ -12,6 +12,7 @@ venv/
 .env
 .env.local
 .env*.local
+.claude/
 *.pem
 *.jks
 *.p8

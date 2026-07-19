@@ -175,7 +175,7 @@ export default function ProfileDetailPanel({ animValue }: Props) {
 
   const avatarCacheKey = user?.avatar_url?.slice(-8) ?? '0';
   const avatarUrl = user?.avatar_url && user?.id
-    ? `http://121.41.31.221:8001/api/v1/users/avatars/${user.id}?v=${avatarCacheKey}`
+    ? `${SERVER_HOST}/api/v1/users/avatars/${user.id}?v=${avatarCacheKey}`
     : null;
 
   /* ── 平移动画：从右往左滑入 ── */

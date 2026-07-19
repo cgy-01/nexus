@@ -99,7 +99,7 @@ Swagger 文档：浏览器打开 `http://localhost:8001/docs`
 | API | `http://localhost:8001` |
 | Swagger 文档 | `http://localhost:8001/docs` |
 | OpenAPI JSON | `http://localhost:8001/openapi.json` |
-| MinIO 控制台 | `http://localhost:9001`（minioadmin / minioadmin） |
+| MinIO 控制台 | `http://localhost:9001`（使用 `.env` 中的 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`） |
 
 ### 三层架构
 
@@ -134,8 +134,8 @@ npm install
 // 本地开发
 export const SERVER_HOST = 'http://localhost:8001';
 
-// 连接内测服务器
-export const SERVER_HOST = 'http://121.41.31.221:8001';
+// 连接部署环境：在 app/.env 中配置 EXPO_PUBLIC_API_URL
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 ```
 
 ### 4. 启动 Web 模式

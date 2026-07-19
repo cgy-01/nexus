@@ -65,7 +65,7 @@ app/
 │   ├── constants/
 │   │   └── theme.ts                # 颜色系统 + 字体 + 间距 + 布局常量
 │   └── global.css                  # CSS 自定义属性（Web 字体栈）
-├── app.json                   # Expo 配置 (name: "Pick", EAS Update, 启动屏)
+├── app.json                   # Expo 配置 (name: "Nexus", EAS Update, 启动屏)
 ├── package.json               # 依赖 & 脚本
 ├── tsconfig.json              # TypeScript 配置 (strict, 路径别名 @/)
 └── expo-env.d.ts              # Expo 类型引用（自动生成，勿手动编辑）

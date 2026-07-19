@@ -25,15 +25,13 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:8081,http://localhost:19006"
 
     # PostgreSQL
-    database_url: str = (
-        "postgresql+asyncpg://nexus:nexus_dev@localhost:5432/nexus"
-    )
+    database_url: str
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
     # JWT
-    jwt_secret_key: str = "change-me"
+    jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
@@ -53,8 +51,8 @@ class Settings(BaseSettings):
 
     # MinIO
     minio_endpoint: str = "localhost:9000"
-    minio_root_user: str = "minioadmin"
-    minio_root_password: str = "minioadmin"
+    minio_root_user: str
+    minio_root_password: str
     minio_bucket: str = "nexus-files"
     minio_secure: bool = False
 

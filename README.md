@@ -1,4 +1,4 @@
-# Nexus AI / Pick — 全栈 AI 助手
+# Nexus AI — 全栈 AI 助手
 
 > Expo 跨平台前端 + FastAPI 后端 + DeepSeek LLM，提供 AI 对话、笔记生成、会话管理。
 

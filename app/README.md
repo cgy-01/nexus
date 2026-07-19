@@ -1,4 +1,4 @@
-# Pick — Nexus AI 智能助手
+# Nexus — AI 智能助手
 
 基于 Expo 跨平台框架开发的 AI 对话与知识管理应用，支持 Android / iOS / Web 三端。
 

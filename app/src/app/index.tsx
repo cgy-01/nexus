@@ -33,7 +33,7 @@ export default function SplashScreen() {
       <Image
         source={require('../../assets/images/splash-icon.png')}
         style={styles.logo}
-        accessibilityLabel="Pick"
+        accessibilityLabel="Nexus"
       />
     </View>
   );

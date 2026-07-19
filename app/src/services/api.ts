@@ -10,9 +10,9 @@
 import axios from 'axios';
 import { tokenStore } from '@/services/token';
 
-// 内测服务器地址
-export const SERVER_HOST = 'http://121.41.31.221:8001';
-const BASE_URL = `${SERVER_HOST}/api/v1`;
+// 通过 app/.env 中的 EXPO_PUBLIC_API_URL 配置；未配置时使用本地开发服务。
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8001/api/v1';
+export const SERVER_HOST = BASE_URL.replace(/\/api\/v1\/?$/, '');
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -56,7 +56,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     // 内测阶段：打印详细错误便于排查
-    if (__DEV__ || true) {
+    if (__DEV__) {
       console.log('[API Error]', {
         url: error.config?.url,
         baseURL: error.config?.baseURL,

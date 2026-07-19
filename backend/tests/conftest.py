@@ -31,10 +31,7 @@ from src.main import create_app
 # Database URL
 # ---------------------------------------------------------------------------
 
-TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://nexus:nexus_dev@localhost:5432/nexus_test",
-)
+TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
 
 
 # ---------------------------------------------------------------------------
