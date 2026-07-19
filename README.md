@@ -67,16 +67,18 @@ curl http://localhost:8001/api/v1/health
 
 The expected response is `{"status":"ok","db":"ok","redis":"ok"}`. API documentation is available at [http://localhost:8001/docs](http://localhost:8001/docs).
 
-### 2. Start the frontend
+### 2. Build an Android APK
 
 ```bash
 cd app
 cp .env.example .env
+# Set EXPO_PUBLIC_API_URL to a backend URL reachable from the Android device.
 npm install
-npx expo start --web
+npx eas-cli@latest login
+npx eas-cli@latest build --platform android --profile preview
 ```
 
-Set `EXPO_PUBLIC_API_URL` in `app/.env` to the backend API URL, for example `http://localhost:8001/api/v1`.
+The `preview` profile in `app/eas.json` produces an installable APK. After the build completes, EAS provides a download link and QR code.
 
 ### 3. Register and sign in
 
